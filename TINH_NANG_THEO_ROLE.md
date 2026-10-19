@@ -60,6 +60,7 @@ graph TD
 | **4. Cài đặt SEO & Tracking Script** | - Cấu hình Meta Title, Keywords, Description mặc định toàn trang.<br>- **Nhúng thẻ Meta xác minh**: Nhập các thẻ xác minh đối tác affiliate (*PartnerBoost, Impact, fo-verify, ClicksNova...*).<br>- **Nhúng mã Tracking toàn diện**: Nhúng mã script vào `<head>` (Google Analytics GTAG, Google Tag Manager, Pixel), nhúng mã vào `<body>` và chân trang `</body>`. |
 | **5. Quản lý Quảng cáo (Ads Banner)** | - Cấu hình hiển thị banner quảng cáo: Header 728x90, Sidebar 300x250, In-article 300x600.<br>- Chọn hiển thị dạng: Ảnh upload kèm link affiliate hoặc Mã Script Google AdSense. |
 | **6. Toàn quyền Nội dung & Affiliate** | - Sở hữu 100% quyền hạn của tất cả các module: Danh mục, Bài viết, Store, Offer, Menu, Trang tĩnh, Feedback, Thư viện File. |
+| **7. Quản trị Bảo mật Xác thực 2 bước (2FA)** | - **Tự bật/tắt 2FA** cho tài khoản cá nhân bằng Google Authenticator / Authy.<br>- Nhận và quản lý danh sách Mã khôi phục khẩn cấp (Backup Recovery Codes).<br>- **Cấu hình bắt buộc bật 2FA** cho toàn bộ tài khoản Admin để bảo vệ tuyệt đối cổng doanh thu affiliate.<br>- **Quyền Reset 2FA khẩn cấp**: Mở khóa / tắt 2FA giúp nhân viên khi họ làm mất hoặc đổi điện thoại mới. |
 
 ---
 
@@ -73,7 +74,8 @@ graph TD
 | **3. Mã giảm giá (Offer)** | - Xem danh sách ưu đãi & coupon.<br>- Thêm mới mã giảm giá, mức giảm (% off, $ off), hạn dùng.<br>- Nhập link tracking affiliate.<br>- Nhân bản (Clone) mã giảm giá tương tự. | - Không được tự ý xóa mã giảm giá diện rộng. |
 | **4. Thư viện File & Media** | - Tải hình ảnh bài viết, logo cửa hàng lên hệ thống.<br>- Copy link ảnh để chèn vào nội dung bài viết. | - Không được xóa các thư mục ảnh hệ thống của Admin. |
 | **5. Danh mục & Menu** | - Xem cây danh mục tin tức và store.<br>- Chọn danh mục khi đăng bài viết/store. | - Không được thay đổi cấu trúc Menu chính và Menu chân trang toàn hệ thống. |
-| **6. Quản trị & Cài đặt** | - Hoàn toàn không có quyền. | - **BỊ ẨN HOÀN TOÀN TRÊN MENU:** Không thấy mục Cài đặt hệ thống, Cài đặt SEO, Chèn mã Tracking, Quản lý User, Quản lý Role. |
+| **6. Bảo mật Tài khoản (2FA)** | - **Tự bật/tắt xác thực 2 bước (2FA)** cho tài khoản của chính mình qua ứng dụng Google Authenticator, Microsoft Authenticator hoặc Authy.<br>- Tự sinh mã khôi phục khẩn cấp khi kích hoạt. | - Không được can thiệp hoặc tắt 2FA của người dùng khác. |
+| **7. Quản trị & Cài đặt** | - Hoàn toàn không có quyền. | - **BỊ ẨN HOÀN TOÀN TRÊN MENU:** Không thấy mục Cài đặt hệ thống, Cài đặt SEO, Chèn mã Tracking, Quản lý User, Quản lý Role. |
 
 ---
 
@@ -149,6 +151,8 @@ Bảng đối chiếu chi tiết quyền hạn giữa các Role trong hệ thố
 | | `user.create` | ❌ | ❌ | ✅ | Admin tự tích |
 | | `user.update` | ❌ | ❌ | ✅ | Admin tự tích |
 | | `user.delete` | ❌ | ❌ | ✅ | Admin tự tích |
+| **Xác thực 2 bước (2FA)**| `user.2fa_self` (Tự bật/tắt 2FA) | ❌ | ✅ | ✅ | ✅ |
+| | `user.2fa_reset` (Admin reset 2FA)| ❌ | ❌ | ✅ | Admin tự tích |
 | **Quản lý Vai trò** | `role.manage` | ❌ | ❌ | ✅ | ❌ (Chỉ Admin) |
 | **Cài đặt Hệ thống** | `setting.general` | ❌ | ❌ | ✅ | ❌ (Chỉ Admin) |
 | | `setting.seo` | ❌ | ❌ | ✅ | Admin tự tích |

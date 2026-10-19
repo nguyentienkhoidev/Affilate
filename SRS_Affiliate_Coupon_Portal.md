@@ -411,6 +411,22 @@ Hệ thống triển khai mô hình phân quyền chuẩn RBAC (Role-Based Acces
     * Mọi API route được bảo vệ bằng Decorator/Guard kiểm tra quyền nghiêm ngặt (ví dụ: `@RequirePermission('post.delete')`).
     * Nếu Token của User không chứa quyền hợp lệ -> API lập tức trả về mã lỗi `HTTP 403 Forbidden` kèm thông điệp bảo mật, ngăn chặn hoàn toàn việc bypass từ công cụ ngoài như Postman/Curl.
 
+- [ ] **BE-USER-03 (Tính năng Bật / Tắt Xác thực 2 Bước - Two-Factor Authentication 2FA):**
+  - [ ] **Cơ chế hoạt động:** Chuẩn mã hóa TOTP (Time-Based One-Time Password) tương thích hoàn toàn với Google Authenticator, Microsoft Authenticator, Authy.
+  - [ ] **Quy trình Kích hoạt 2FA (Turn ON):**
+    * Người dùng (Admin hoặc Nhân viên) vào mục Cài đặt tài khoản / Hồ sơ cá nhân -> Bấm "Bật 2FA".
+    * Hệ thống tạo một Secret Key ngẫu nhiên và hiển thị mã QR Code kèm chuỗi ký tự bí mật để quét vào app Authenticator.
+    * Người dùng nhập mã OTP 6 số từ ứng dụng trên điện thoại để xác nhận kích hoạt thành công.
+    * Hệ thống tự động tạo 8 - 10 Mã khôi phục dự phòng (Backup Recovery Codes) dùng để đăng nhập khẩn cấp khi mất điện thoại (mỗi mã chỉ dùng 1 lần).
+  - [ ] **Quy trình Tắt 2FA (Turn OFF):**
+    * Người dùng có thể chủ động tắt 2FA bằng cách nhập mật khẩu tài khoản + mã OTP hiện tại để xác thực chính chủ.
+  - [ ] **Luồng Đăng nhập ProCMS khi đã bật 2FA:**
+    * Bước 1: Nhập Email + Password chính xác.
+    * Bước 2: Hệ thống chuyển sang màn hình thứ hai yêu cầu nhập mã 6 số từ Google Authenticator (hoặc nhập 1 mã Recovery Code).
+    * Bước 3: Xác thực đúng mới cấp Token truy cập vào trang quản trị ProCMS.
+  - [ ] **Quyền Quản trị viên (Admin Master 2FA Management):**
+    * Admin có quyền **Reset / Vô hiệu hóa 2FA khẩn cấp** cho tài khoản của nhân viên trong trường hợp nhân viên làm mất điện thoại hoặc hỏng thiết bị, giúp nhân viên không bị khóa vĩnh viễn khỏi hệ thống.
+    * Tùy chọn cấu hình hệ thống: "Bắt buộc bật 2FA đối với tài khoản Admin" để gia tăng bảo mật cấp doanh nghiệp.
 
 ---
 
@@ -577,6 +593,9 @@ erDiagram
         string avatar
         boolean is_super_admin
         boolean is_active
+        boolean two_factor_enabled
+        string two_factor_secret
+        json two_factor_recovery_codes
         timestamp created_at
     }
 
@@ -638,6 +657,7 @@ erDiagram
 - [ ] **NFR-SEC-04:** Mã hóa mật khẩu người dùng chuẩn Bcrypt/Argon2 an toàn tuyệt đối.
 - [ ] **NFR-SEC-05:** Giới hạn tần suất gọi API (Rate Limiting) cho các endpoint công khai (Search, Feedback submit, Get Code).
 - [ ] **NFR-SEC-06:** Cơ chế DTO Pattern: Tuyệt đối không để lộ các trường nhạy cảm của CSDL (như password, internal note, aff portal account) ra các API công khai của Frontend.
+- [ ] **NFR-SEC-07:** Bảo mật Xác thực 2 bước (2FA) theo chuẩn RFC 6238 TOTP (Google Authenticator, Authy), có cơ chế mã khôi phục khẩn cấp và quyền Admin Reset 2FA an toàn.
 
 ---
 
