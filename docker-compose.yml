@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bargorya-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bargorya_db
+      POSTGRES_USER: bargorya_user
+      POSTGRES_PASSWORD: bargorya_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bargorya_user -d bargorya_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bargorya-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: bargorya_db
+      DB_USER: bargorya_user
+      DB_PASSWORD: bargorya_password
+      JWT_SECRET: c2VjdXJlX2JhcmdvcnlhX2FmZmlsaWF0ZV9wb3J0YWxfand0X3NlY3JldF9rZXlfMjAyNg==
+      STORAGE_LOCAL_PATH: /var/www/bargorya/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/var/www/bargorya/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bargorya-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8080
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  uploads_data:

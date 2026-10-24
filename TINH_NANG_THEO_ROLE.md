@@ -15,6 +15,8 @@ Hệ thống được thiết kế theo mô hình **Phân quyền Động 100% l
   * **`Nhân viên`**: Vai trò vận hành cơ sở (quản lý bài viết, store, mã giảm giá được phân công).
 * **Người dùng công khai ngoài website**:
   * **`Guest`**: Độc giả vãng lai không cần tài khoản, truy cập từ Google Search hoặc Mạng xã hội.
+* **Quy chuẩn ngôn ngữ hiển thị**:
+  * **100% Tiếng Anh (English - en-US)**: Toàn bộ văn bản hiển thị trên giao diện người dùng bên ngoài (Client Portal) và trang làm việc nội bộ của các Role trong ProCMS Admin đều dùng tiếng Anh chuẩn quốc tế (Menu, Nút bấm, Tiêu đề bảng, Nhãn form, Trạng thái và Thông báo).
 
 ---
 

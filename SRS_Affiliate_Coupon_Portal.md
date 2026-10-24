@@ -640,15 +640,70 @@ erDiagram
 - [ ] **NFR-PERF-03:** Largest Contentful Paint (LCP) < 2.5s; First Input Delay (FID) < 100ms; Cumulative Layout Shift (CLS) < 0.1.
 - [ ] **NFR-PERF-04:** Tự động nén và phục vụ hình ảnh định dạng WebP hiện đại, hỗ trợ CDN caching.
 
-### 5.2. Tối ưu hóa Công cụ Tìm kiếm (Search Engine Optimization - SEO)
-- [ ] **NFR-SEO-01:** Render trang dạng SSR (Server-Side Rendering) hoặc SSG (Static Site Generation) để Googlebot có thể cào nội dung đầy đủ không cần thực thi JavaScript phức tạp.
-- [ ] **NFR-SEO-02:** Tự động sinh `sitemap.xml` phân tách rõ: bài viết, danh mục, cửa hàng thương hiệu và cập nhật tự động khi có bài mới.
-- [ ] **NFR-SEO-03:** Cấu hình chuẩn tệp tin `robots.txt` cho phép index bài viết và chặn các trang quản trị backend.
-- [ ] **NFR-SEO-04:** Tích hợp cấu trúc dữ liệu JSON-LD Schema đầy đủ:
-  * Schema `NewsArticle` cho bài viết tin tức.
-  * Schema `Product` & `Review` cho bài đánh giá sản phẩm.
-  * Schema `Organization` cho thương hiệu.
-  * Schema `BreadcrumbList` cho thanh điều hướng.
+### 5.2. Tối ưu hóa Công cụ Tìm kiếm Cấp cao (Advanced SEO Architecture)
+Hệ thống được thiết kế theo các tiêu chuẩn kỹ thuật SEO khắt khe nhất của Google Search Central, tối ưu hóa toàn diện cho mô hình Affiliate News & Coupon Directory:
+
+- [ ] **NFR-SEO-01 (Kiến trúc Render SSR / ISR & Metadata API Động):**
+  - [ ] Render 100% phía Server bằng Next.js App Router (SSR & ISR) giúp bot Google/Bing cào được toàn bộ nội dung HTML thuần ngay trong lần đọc đầu tiên mà không cần chờ nạp Client JS.
+  - [ ] Tự động sinh thẻ `<title>` tối ưu CTR theo công thức chuẩn: *"[Tên Store] Coupons, Promo Codes & Discounts ([Mức giảm cao nhất]% Off) - [SiteName]"*.
+  - [ ] Tự động sinh `<meta name="description">` chứa từ khóa chính, lời kêu gọi hành động và tháng/năm cập nhật mới nhất.
+  - [ ] Tự động gắn thẻ `<link rel="canonical" href="..." />` cho mọi trang (Trang chủ, Bài viết, Store, Danh mục) nhằm triệt tiêu hoàn toàn lỗi trùng lặp nội dung (Duplicate Content).
+
+- [ ] **NFR-SEO-02 (Cấu trúc Dữ liệu Schema JSON-LD Toàn diện - Google Rich Snippets):**
+  - [ ] **Schema `AggregateRating` & `Review` (Đánh giá Sao Vàng trên Google):** Tích hợp schema rating trên trang Store (ví dụ: *5.0 ★ dựa trên 25 lượt đánh giá*) giúp hiển thị các ngôi sao vàng uy tín ngay trên kết quả tìm kiếm Google, tăng tỷ lệ nhấp chuột (CTR) từ 30% đến 40%.
+  - [ ] **Schema `Coupon / SaleEvent / Offer`:** Đánh dấu dữ liệu mã giảm giá, mức chiết khấu, ngày bắt đầu và ngày hết hạn để Google nhận diện đây là trang tổng hợp ưu đãi chính hãng.
+  - [ ] **Schema `FAQPage` (Hiển thị Khối Hỏi - Đáp trên SERP):** Đính kèm khối câu hỏi thường gặp ở cuối trang Store/Review dạng schema FAQ, giúp hiển thị các câu hỏi dạng dropdown xổ xuống chiếm trọn diện tích nổi bật trên trang 1 Google.
+  - [ ] **Schema `NewsArticle`:** Đầy đủ các thuộc tính chuẩn báo chí cho bài viết tin tức: `headline`, `image`, `datePublished`, `dateModified` (ngày cập nhật mới nhất), `author` (tên và URL tác giả), `publisher` (logo và tên tổ chức).
+  - [ ] **Schema `BreadcrumbList`:** Hiển thị thanh đường dẫn phân cấp chuyên nghiệp trên kết quả tìm kiếm (ví dụ: *Home > Stores > Nilight*).
+  - [ ] **Schema `Organization` & `WebSite`:** Nhận diện thực thể thương hiệu và kích hoạt hộp tìm kiếm Google Sitelinks Searchbox.
+
+- [ ] **NFR-SEO-03 (Hệ thống Sitemap Động Phân tầng & Robots.txt chuẩn):**
+  - [ ] Xây dựng `sitemap-index.xml` phân tách rõ ràng cho hệ thống quy mô lớn (>3,700 stores):
+    * `sitemap-posts.xml`: Toàn bộ bài viết tin tức và review.
+    * `sitemap-stores.xml`: Toàn bộ danh sách cửa hàng thương hiệu.
+    * `sitemap-categories.xml`: Danh mục chuyên đề.
+    * `sitemap-pages.xml`: Các trang nội dung tĩnh.
+  - [ ] Cập nhật trường `<lastmod>` tự động theo thời gian thực mỗi khi Admin chỉnh sửa bài viết hoặc thêm mã giảm giá mới (tăng điểm đánh giá cập nhật - Freshness Score của Google).
+  - [ ] Tệp tin `robots.txt` chuẩn: Cho phép Googlebot/Bingbot cào toàn bộ bài viết và trang store công khai; chặn index các trang quản trị `/admin/`, `/backend/`, `/api/` và link chuyển tiếp click affiliate.
+
+- [ ] **NFR-SEO-04 (Chiến lược Nội dung Chống phạt "Thin-Content" của Google):**
+  - [ ] Tuyệt đối tránh việc biến trang Store thành trang "rác/nội dung mỏng" chỉ có mã:
+    * Mỗi trang Store bắt buộc có bài viết giới thiệu chất lượng từ 400 - 800 từ chia làm 4 phần rõ ràng (*Who We Are, What We Offer, Why Choose Us, Our Mission & Vision*).
+    * Tiêu đề trang Store tự động cập nhật ngày tháng động dạng: *"Last Updated: [Today]"* để kích thích thuật toán xếp hạng tin mới của Google.
+
+- [ ] **NFR-SEO-05 (Cấu trúc Liên kết Nội bộ Chặt chẽ - Internal Silo Architecture):**
+  - [ ] Xây dựng mạng lưới liên kết 3 chiều thông minh:
+    * Từ Bài viết Review trỏ link nội bộ (Internal link) sang Trang Store tương ứng.
+    * Từ Trang Store trỏ sang các Store cùng ngành hàng liên quan (*Similar Stores*).
+    * Hệ thống Breadcrumb chuẩn mực cho phép bot di chuyển qua lại giữa các cấp danh mục mà không gặp "ngõ cụt" (Orphan pages).
+
+- [ ] **NFR-SEO-06 (Chuẩn Thuộc tính Link Tiếp thị Liên kết & Cloaking An toàn - Safe Affiliate Links):**
+  - [ ] Toàn bộ các đường link trỏ ra ngoài trang bán hàng của đối tác (Affiliate Links) tự động chuyển tiếp qua endpoint `/go/[slug]` hoặc `/out/[id]`.
+  - [ ] Sử dụng mã phản hồi `HTTP 307 Temporary Redirect` (hoặc `302 Found`), tuyệt đối không dùng 301.
+  - [ ] Thêm header HTTP `X-Robots-Tag: noindex, nofollow, noarchive` và gắn thẻ HTML `rel="nofollow sponsored" target="_blank"`.
+  - [ ] Cấu hình `Disallow: /go/` và `Disallow: /out/` trong `robots.txt` bảo vệ tối đa Domain Authority.
+
+- [ ] **NFR-SEO-07 (Giao thức Lập chỉ mục Tức thì - IndexNow Protocol & Google Indexing API):**
+  - [ ] Tích hợp API IndexNow tự động thông báo cho Bing, Yandex, Seznam ngay khi có coupon hoặc bài viết mới được đăng tải (lập chỉ mục trong vài phút thay vì vài tuần).
+  - [ ] Tự động gửi ping sitemap tới Google Search Console API.
+
+- [ ] **NFR-SEO-08 (Hệ thống Schema Linked `@graph` JSON-LD & `HowTo` Rich Snippets):**
+  - [ ] Bổ sung Schema `HowTo` hướng dẫn từng bước áp dụng mã giảm giá kèm hình ảnh minh họa trên trang Store, kích hoạt Rich Snippet dạng các bước (Step-by-step) trên Google Mobile.
+  - [ ] Liên kết toàn diện các thực thể qua Linked `@graph`: `WebSite` -> `Organization` -> `Author` -> `Store` -> `AggregateRating` -> `Offer` -> `FAQPage` -> `BreadcrumbList`.
+
+- [ ] **NFR-SEO-09 (Chiến lược Giữ Sức Mạnh Mã Hết Hạn - Expired Coupons SEO):**
+  - [ ] Tuyệt đối không xóa bài hoặc trả về lỗi 404 khi coupon hết hạn.
+  - [ ] Tự động chuyển coupon hết hạn vào khối Accordion "Expired Coupons / Offers" ở cuối trang Store, giữ nguyên 100% lượng truy cập từ người dùng tìm kiếm mã cũ trên Google.
+
+- [ ] **NFR-SEO-10 (Bảo Vệ Crawl Budget & Chuẩn Hóa Bộ Lọc / Tìm Kiếm Nội Bộ):**
+  - [ ] Mọi URL tìm kiếm nội bộ `/search?q=...` bắt buộc gắn thẻ `<meta name="robots" content="noindex, follow" />` và chặn trong `robots.txt` để không bị Google phạt Thin/Spam Index.
+  - [ ] Các URL lọc faceted (`?sort=...`, `?filter=...`) tự động canonical về URL gốc của Store.
+
+- [ ] **NFR-SEO-11 (Tiêu Chuẩn E-E-A-T & Cơ Chế Kiểm Duyệt Thực Tế - Tested Badges):**
+  - [ ] Gắn huy hiệu kiểm duyệt *"Verified & Tested on [Today] by Bargorya Team"* kèm tỷ lệ thành công (Success Rate) và nút biểu quyết tính khả dụng.
+  - [ ] Trang thông tin tác giả có liên kết mạng xã hội chính chủ (LinkedIn/Twitter) với Schema `Person` (`sameAs`).
+  - [ ] Trang chính sách minh bạch bắt buộc: `/editorial-guidelines`, `/affiliate-disclosure`, `/how-we-rate`.
+*(Chi tiết xem toàn bộ tài liệu chuyên sâu: [CHIEN_LUOC_TOI_UU_SEO_CHUYEN_SAU.md](file:///Users/khoinguyen/Documents/Affilate/CHIEN_LUOC_TOI_UU_SEO_CHUYEN_SAU.md))*
 
 ### 5.3. Bảo mật (Security)
 - [ ] **NFR-SEC-01:** Bắt buộc chứng chỉ SSL/HTTPS toàn trang.
@@ -658,6 +713,40 @@ erDiagram
 - [ ] **NFR-SEC-05:** Giới hạn tần suất gọi API (Rate Limiting) cho các endpoint công khai (Search, Feedback submit, Get Code).
 - [ ] **NFR-SEC-06:** Cơ chế DTO Pattern: Tuyệt đối không để lộ các trường nhạy cảm của CSDL (như password, internal note, aff portal account) ra các API công khai của Frontend.
 - [ ] **NFR-SEC-07:** Bảo mật Xác thực 2 bước (2FA) theo chuẩn RFC 6238 TOTP (Google Authenticator, Authy), có cơ chế mã khôi phục khẩn cấp và quyền Admin Reset 2FA an toàn.
+
+### 5.4. Khả năng Tương thích Đa thiết bị (Responsive Design & Cross-Device Compatibility)
+Hệ thống phải hiển thị mượt mà, tối ưu thẩm mỹ và trải nghiệm người dùng trên **mọi kích thước màn hình** (Desktop, Tablet, Mobile) cho cả 2 trang Client và Admin:
+
+- [ ] **NFR-RESP-01 (Tương thích Máy tính để bàn & Laptop - Desktop >= 1024px):**
+  - [ ] Hiển thị đầy đủ bố cục đa cột chuẩn tạp chí: Header Topbar, Banner Ads 728x90, Hero Section lớn kèm Editor Pick 4 bài viết bên phải, các khối Grid 3 cột (*Business*) và Split 1 lớn + 3 nhỏ (*Tech*).
+  - [ ] Sidebar bài viết và Sidebar Store cố định, dễ đọc.
+  - [ ] Trang Admin ProCMS hiển thị đầy đủ bảng dữ liệu lớn, bộ lọc nâng cao đa tiêu chí, trình soạn thảo văn bản CKEditor không gian rộng rãi.
+
+- [ ] **NFR-RESP-02 (Tương thích Máy tính bảng - Tablet 768px ~ 1023px):**
+  - [ ] Bố cục tự thích ứng co giãn từ 3 cột về **2 cột cân đối** (iPad, Samsung Tab).
+  - [ ] Thanh điều hướng menu chuyển sang dạng thích ứng (Adaptive navigation).
+  - [ ] Danh sách thẻ Coupon hiển thị gọn gàng, nút bấm thao tác dễ dàng bằng cảm ứng.
+  - [ ] Trang Admin ProCMS: Menu Sidebar tự thu gọn thành dạng biểu tượng (Mini Sidebar Icon) để nhường không gian cho bảng dữ liệu.
+
+- [ ] **NFR-RESP-03 (Tương thích Điện thoại Di động - Mobile 320px ~ 767px):**
+  - [ ] Menu chính tự chuyển thành **Thanh trượt Off-Canvas Drawer (Hamburger Menu)** chạm vuốt êm ái.
+  - [ ] Khối bài viết chuyển về dạng **danh sách 1 cột (Single-column feed)**, hình ảnh tự động co giãn 100% bề ngang, tiêu đề rõ ràng không bị che khuất.
+  - [ ] Thanh `#Tags` và dải tin `Flash News` hỗ trợ vuốt chạm cảm ứng ngang (Touch swipe).
+  - [ ] **Trang Store hoạt động như một Landing Page Bio Link chuyên nghiệp**: Thẻ coupon dọc bo tròn, nút "Get Code" to bản (chiều cao tối thiểu 48px đạt chuẩn Apple Human Interface Guidelines giúp ngón tay cái dễ chạm).
+  - [ ] **Cửa sổ Popup "Get Code" thích ứng Mobile**: Tự động hiển thị dạng Bottom Sheet hoặc Modal tràn màn hình, nút "Tap To Copy" nổi bật, không bị che mất nút đóng.
+  - [ ] Trang Admin ProCMS: Hỗ trợ bảng dữ liệu cuộn ngang (Horizontal scroll table) hoặc chuyển đổi sang dạng thẻ rút gọn, giúp Quản trị viên/Nhân viên có thể dùng điện thoại duyệt bài hoặc sửa mã giảm giá khẩn cấp khi đang di chuyển ngoài đường.
+
+- [ ] **NFR-RESP-04 (Tương thích Đa trình duyệt & Webview Mạng xã hội):**
+  - [ ] Tương thích 100% trên các trình duyệt: Google Chrome, Apple Safari (iOS/macOS), Mozilla Firefox, Microsoft Edge.
+  - [ ] **Tương thích tuyệt đối với Webview mạng xã hội**: Hoạt động hoàn hảo trong trình duyệt nội bộ của ứng dụng **TikTok App**, **Facebook App**, **Instagram App**, **Zalo App**, **YouTube Mobile App** (không bị vỡ font chữ, không bị lệch khung hình, không bị kẹt khi bấm copy mã hoặc mở link affiliate).
+
+### 5.5. Chuẩn Hóa Ngôn Ngữ Giao Diện 100% Tiếng Anh (100% English UI Requirement)
+- [ ] **NFR-LANG-01 (Toàn bộ Giao diện Client & Admin sử dụng Tiếng Anh - en-US):**
+  - [ ] 100% Văn bản hiển thị trên cổng thông tin người dùng (Client Portal) sử dụng tiếng Anh chuẩn quốc tế (`en-US`): Topbar, Navigation menu (`Home`, `Stores`, `Categories`, `Coupons & Deals`, `Reviews`), Footer, Breadcrumbs, Search placeholder, Copyright.
+  - [ ] 100% Văn bản trên trang Store và khối Coupon: `Get Code`, `Copy Code`, `Visit Store`, `Verified Today`, `Expired Offers`, `Similar Stores`, `About Store`, `How to use coupons at [Store]`.
+  - [ ] 100% Văn bản trên trang Quản trị ProCMS Admin: Sidebar menu (`Dashboard`, `Roles & Permissions`, `Users`, `Categories`, `Stores`, `Offers`, `Posts`, `Pages`, `Feedback`, `Settings`), Bảng danh sách, Tiêu đề cột, Các nút hành động (`Add New`, `Save Changes`, `Delete`, `Cancel`, `Upload`, `Filter`), Nhãn trạng thái (`Active`, `Inactive`, `Staff`, `Admin`).
+  - [ ] 100% Thông báo lỗi và thông báo trạng thái (Toast notifications & Validation alerts): `Code copied to clipboard!`, `Store created successfully`, `Please enter a valid email address`, `Are you sure you want to delete this offer?`.
+  - [ ] Toàn bộ dữ liệu cấu trúc Schema JSON-LD và thẻ Meta SEO bằng tiếng Anh chuẩn tối ưu cho người dùng quốc tế.
 
 ---
 

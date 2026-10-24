@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "name": "Technology & Gear",
+    "slug": "tech",
+    "count": 8,
+    "icon": "⚡",
+    "subtitle": "Hardware Benchmarks & Consumer Tech Reviews",
+    "description": "Explore lab-tested reviews, 3D printing breakthroughs, mechanical keyboards, fast GaN chargers, and cutting-edge gadget analyses."
+  },
+  {
+    "id": 2,
+    "name": "Business & Economy",
+    "slug": "business",
+    "count": 6,
+    "icon": "📈",
+    "subtitle": "Market Trends, E-Commerce & Growth Insights",
+    "description": "In-depth reporting on e-commerce logistics, promo pricing psychology, fintech privacy, and digital business development."
+  },
+  {
+    "id": 3,
+    "name": "Entertainment & Culture",
+    "slug": "entertainment",
+    "count": 4,
+    "icon": "🎬",
+    "subtitle": "Pop Culture, Collectibles & Creative Spotlight",
+    "description": "Feature profiles on artistic streetwear, combat dueling lightsabers, memorabilia culture, and entertainment trends."
+  },
+  {
+    "id": 4,
+    "name": "US Politics & Global",
+    "slug": "us-politics",
+    "count": 4,
+    "icon": "🏛️",
+    "subtitle": "Policy Shifts, Trade Dynamics & Market Regulations",
+    "description": "Objective coverage of US trade regulations, tariff implications on consumer electronics, and economic growth indicators."
+  },
+  {
+    "id": 5,
+    "name": "Product Reviews",
+    "slug": "reviews",
+    "count": 12,
+    "icon": "🔍",
+    "subtitle": "Unbiased Laboratory Tests & Field Scoring",
+    "description": "Tested for real-world performance, durability, and value before you buy. Verified independently by Bargorya editors."
+  },
+  {
+    "id": 6,
+    "name": "Lifestyle & Living",
+    "slug": "lifestyle",
+    "count": 5,
+    "icon": "✨",
+    "subtitle": "Home Innovations, Wellness & Everyday Essentials",
+    "description": "Discover artisan drinkware, circadian sleep tech, gourmet foods, and design accessories for modern living."
+  }
+]

@@ -1,0 +1,352 @@
+[
+  {
+    "id": "d-anker-space-one",
+    "slug": "anker-soundcore-space-one-wireless-anc-headphones",
+    "title": "Anker Soundcore Space One Adaptive ANC Wireless Headphones",
+    "summary": "2X stronger voice reduction, 40 hours of playtime with ANC enabled, and Hi-Res Wireless Audio with LDAC support.",
+    "description": "The Soundcore Space One by Anker elevates wireless listening with upgraded noise cancelling technology tailored for commuting and open offices. Engineered with 40mm customized dynamic drivers, comfortable floating axis earcups, and multipoint Bluetooth 5.3 connection.",
+    "category": "Electronics",
+    "storeName": "Anker",
+    "storeSlug": "anker",
+    "originalPrice": 99.99,
+    "dealPrice": 69.99,
+    "discountPercent": 30,
+    "couponCode": "SPACEONE30",
+    "affiliateUrl": "https://www.anker.com/?cj_ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
+    "badge": "Editor's Choice",
+    "status": "active",
+    "expiryDate": "2026-10-31",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.8,
+    "reviewCount": 240,
+    "isStaffPick": true,
+    "isHot": true,
+    "terms": "Valid on Matte Black and Latte Cream finishes while supplies last. Limit 2 per household.",
+    "pros": [
+      "Outstanding adaptive ANC for the sub-$100 price tier",
+      "Comfortable lightweight headband with 8° rotating earcups",
+      "Impressive 55-hour battery life (ANC off) / 40-hour (ANC on)",
+      "LDAC Hi-Res Audio certification"
+    ],
+    "cons": [
+      "App equalizer requires custom tuning for bass purists",
+      "Carrying pouch included instead of hard-shell case"
+    ],
+    "specs": [
+      { "label": "Driver Size", "value": "40mm Dynamic" },
+      { "label": "Bluetooth Version", "value": "5.3 Multipoint" },
+      { "label": "Playtime", "value": "40h ANC / 55h Standard" },
+      { "label": "Fast Charge", "value": "5 mins = 4 hours playback" },
+      { "label": "Weight", "value": "259 grams" }
+    ]
+  },
+  {
+    "id": "d-nilight-curved-lightbar",
+    "slug": "nilight-20-inch-triple-row-curved-led-light-bar",
+    "title": "Nilight 20-Inch Triple Row Spot Flood Combo Curved LED Light Bar",
+    "summary": "420W super bright 42,000 lumens waterproof off-road lighting system with complete heavy-duty 16AWG wiring harness.",
+    "description": "Designed for extreme night off-roading, Nilight triple-row curved design provides exceptional panoramic illumination with high-density OSRAM chips. Built with IP67 submersible waterproof silicone seal and die-cast aluminum heat sinks.",
+    "category": "Automotive",
+    "storeName": "Nilight",
+    "storeSlug": "nilight",
+    "originalPrice": 129.99,
+    "dealPrice": 59.99,
+    "discountPercent": 54,
+    "couponCode": "OCTOBER65",
+    "affiliateUrl": "https://www.nilight.com/?pb_ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=800&q=80",
+    "badge": "Huge 54% Off",
+    "status": "active",
+    "expiryDate": "2026-10-28",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.9,
+    "reviewCount": 512,
+    "isStaffPick": true,
+    "isHot": true,
+    "terms": "Direct manufacturer promotion. Includes mounting brackets and rocker switch kit.",
+    "pros": [
+      "Massive 42,000 Lumens output with flood-spot combo beam",
+      "Rugged IP67 waterproof aluminum chassis",
+      "Includes complete 16AWG wiring kit with fuse and relay",
+      "Over 50,000 hours operating lifespan"
+    ],
+    "cons": [
+      "Wiring harness installation may require 30-45 minutes",
+      "Curved profile fits best on bull bars or roof racks"
+    ],
+    "specs": [
+      { "label": "Power Output", "value": "420W / 42,000 LM" },
+      { "label": "Waterproof Rating", "value": "IP67 Submersible" },
+      { "label": "Color Temperature", "value": "6000K Pure White" },
+      { "label": "Working Voltage", "value": "9-30V DC (12V/24V)" }
+    ]
+  },
+  {
+    "id": "d-neo-sabers-xenopixel",
+    "slug": "neo-sabers-xenopixel-dueling-lightsaber",
+    "title": "Neo Sabers Custom Xenopixel V3 Heavy Dueling Combat Saber",
+    "summary": "Aircraft-grade aluminum hilt with 34 sound fonts, gesture ignition controls, infinite color changing, and pixel blade.",
+    "description": "Constructed from solid CNC-machined aerospace 6063 aluminum, this combat-ready Xenopixel lightsaber features dual high-bass speakers, smooth-swing gesture sensors, and a shatter-resistant polycarbonate blade built for full-contact blade duels.",
+    "category": "Entertainment",
+    "storeName": "Neo Sabers",
+    "storeSlug": "neo-sabers",
+    "originalPrice": 249.00,
+    "dealPrice": 199.00,
+    "discountPercent": 20,
+    "couponCode": "FORCE50",
+    "affiliateUrl": "https://neosabers.com/?ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80",
+    "badge": "Top Rated",
+    "status": "active",
+    "expiryDate": "2026-11-30",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.9,
+    "reviewCount": 380,
+    "isStaffPick": true,
+    "isHot": true,
+    "terms": "Includes premium hard carry case, blade plug, and USB charging cable.",
+    "pros": [
+      "Authentic smooth-swing audio with zero lag",
+      "Durable 2mm wall polycarbonate blade for real duels",
+      "Preloaded with 34 popular sound fonts"
+    ],
+    "cons": [
+      "Slightly heavier hilt due to solid metal structure"
+    ],
+    "specs": [
+      { "label": "Hilt Material", "value": "Aerospace Aluminum 6063" },
+      { "label": "Sound Board", "value": "Xenopixel V3 Soundboard" },
+      { "label": "Blade Length", "value": "36-inch Polycarbonate" },
+      { "label": "Battery", "value": "3600mAh Rechargeable" }
+    ]
+  },
+  {
+    "id": "d-hostinger-cloud-startup",
+    "slug": "hostinger-cloud-startup-hosting-with-free-domain",
+    "title": "Hostinger Cloud Startup: High-Performance Hosting + Free CDN",
+    "summary": "300 websites, 200 GB NVMe storage, dedicated IP address, 3GB RAM, and 24/7 priority support with 78% discount.",
+    "description": "Accelerate your digital business with Hostinger dedicated Cloud Startup architecture. Powered by LiteSpeed web servers and HTTP/3 protocol, delivering unmatched loading speed for online stores and high-traffic blogs.",
+    "category": "Software & Hosting",
+    "storeName": "Hostinger",
+    "storeSlug": "hostinger",
+    "originalPrice": 24.99,
+    "dealPrice": 7.99,
+    "discountPercent": 68,
+    "couponCode": "BARGORYA78",
+    "affiliateUrl": "https://www.hostinger.com/?impact_ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
+    "badge": "Exclusive Deal",
+    "status": "active",
+    "expiryDate": "2026-11-15",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.9,
+    "reviewCount": 880,
+    "isStaffPick": true,
+    "isHot": true,
+    "terms": "Price reflects 48-month subscription plan with 3 extra months free. 30-day money-back guarantee.",
+    "pros": [
+      "Dedicated IP address and isolated cloud resources",
+      "Built-in NVMe SSD storage with LiteSpeed caching engine",
+      "Free automated daily backups & SSL security certificates",
+      "Free domain name for the first 12 months"
+    ],
+    "cons": [
+      "Lowest monthly rate requires 48-month billing commitment",
+      "cPanel not used (uses modern proprietary hPanel)"
+    ],
+    "specs": [
+      { "label": "NVMe Storage", "value": "200 GB Ultra-Fast" },
+      { "label": "RAM / CPU", "value": "3 GB RAM / 2 CPU Cores" },
+      { "label": "Dedicated Resources", "value": "Isolated Container" },
+      { "label": "Free Domain", "value": "Included 1 Year" }
+    ]
+  },
+  {
+    "id": "d-ugreen-nexode-100w",
+    "slug": "ugreen-nexode-100w-4-port-gan-fast-charger",
+    "title": "Ugreen Nexode 100W 4-Port GaN Desktop Fast Charger",
+    "summary": "Charge a 16-inch MacBook Pro from 0 to 55% in 30 minutes. 3x USB-C and 1x USB-A ports with dynamic power distribution.",
+    "description": "Eliminate bulky power bricks with the compact Ugreen Nexode 100W GaN desktop power station. Thermal Guard 2.0 temperature protection monitors heat 800 times per second to guarantee safe charging for laptops, tablets, and phones simultaneously.",
+    "category": "Electronics",
+    "storeName": "Ugreen",
+    "storeSlug": "ugreen",
+    "originalPrice": 74.99,
+    "dealPrice": 44.99,
+    "discountPercent": 40,
+    "couponCode": "NEXODE40",
+    "affiliateUrl": "https://www.ugreen.com/?ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=800&q=80",
+    "badge": "Flash Sale",
+    "status": "expiring",
+    "expiryDate": "2026-10-28",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.8,
+    "reviewCount": 167,
+    "isHot": true,
+    "terms": "Limited stock flash deal. Compatible with PD 3.0, QC 4.0+, PPS, and AFC fast charging standards.",
+    "pros": [
+      "Powers modern USB-C laptops at full 100W speed",
+      "Simultaneously fast charges up to 4 devices",
+      "Ultra-efficient GaN II chip generates minimal heat",
+      "Foldable plug for effortless travel"
+    ],
+    "cons": [
+      "High-wattage USB-C 100W cable sold separately",
+      "Heavier than single-port pocket chargers"
+    ],
+    "specs": [
+      { "label": "Total Output", "value": "100W Max" },
+      { "label": "Ports", "value": "3x USB-C + 1x USB-A" },
+      { "label": "Fast Charge Protocols", "value": "PD 3.0, PPS, QC 4+" },
+      { "label": "Safety Protection", "value": "Thermal Guard 2.0" }
+    ]
+  },
+  {
+    "id": "d-lasfit-pro-led-headlights",
+    "slug": "lasfit-custom-fit-canbus-led-headlight-bulbs",
+    "title": "Lasfit Pro-Series Custom H11/9005 CANBUS LED Headlight Conversion Kit",
+    "summary": "600% brighter than standard halogen bulbs. True 1:1 beam pattern, built-in dual cooling fan, and zero error codes.",
+    "description": "Upgrade your nighttime driving clarity with Lasfit Pro-Series custom automotive LED bulbs. Features custom flip-chip diodes calibrated specifically to OEM reflector housings for sharp cutoff lines without blinding oncoming traffic.",
+    "category": "Automotive",
+    "storeName": "Lasfit",
+    "storeSlug": "lasfit",
+    "originalPrice": 119.99,
+    "dealPrice": 83.99,
+    "discountPercent": 30,
+    "couponCode": "LASFIT30",
+    "affiliateUrl": "https://www.lasfit.com/?ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+    "badge": "Popular",
+    "status": "active",
+    "expiryDate": "2026-11-05",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.7,
+    "reviewCount": 94,
+    "terms": "Enter your vehicle year, make, and model during checkout to confirm exact socket compatibility.",
+    "pros": [
+      "Exact 1:1 halogen filament positioning eliminates beam dark spots",
+      "Plug-and-play installation takes under 15 minutes",
+      "Intelligent CANBUS driver prevents dashboard flicker errors"
+    ],
+    "cons": [
+      "Some European vehicles may require extra decoder harness"
+    ],
+    "specs": [
+      { "label": "Luminous Flux", "value": "10,000 LM per set" },
+      { "label": "Color Temp", "value": "6000K Diamond White" },
+      { "label": "Cooling", "value": "12,000 RPM Turbofan" },
+      { "label": "Lifespan", "value": "30,000+ hours" }
+    ]
+  },
+  {
+    "id": "d-nike-pegasus-41",
+    "slug": "nike-air-zoom-pegasus-41-road-running-shoes",
+    "title": "Nike Air Zoom Pegasus 41 Road Running Shoes",
+    "summary": "Responsive ReactX foam cushioning, dual Air Zoom units in forefoot and heel, with engineered breathable mesh upper.",
+    "description": "The workhorse with wings returns. The Nike Pegasus 41 introduces all-new ReactX foam for 13% more energy return compared to previous generations, combined with upgraded plush collar and tongue for long-distance training comfort.",
+    "category": "Fashion & Apparel",
+    "storeName": "Nike",
+    "storeSlug": "nike",
+    "originalPrice": 140.00,
+    "dealPrice": 89.97,
+    "discountPercent": 36,
+    "affiliateUrl": "https://www.nike.com/?ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80",
+    "badge": "Member Deal",
+    "status": "active",
+    "expiryDate": "2026-10-30",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.8,
+    "reviewCount": 380,
+    "terms": "Nike Member sign-in required for additional 20% promotional code at checkout. Free 60-day returns.",
+    "pros": [
+      "Upgraded ReactX foam delivers lively, springy step transition",
+      "Durable waffle-pattern rubber outsole withstands 500+ miles",
+      "Comfortable room in the toe box compared to Pegasus 40"
+    ],
+    "cons": [
+      "White colorway picks up road grit easily in wet weather"
+    ],
+    "specs": [
+      { "label": "Shoe Type", "value": "Daily Neutral Road Running" },
+      { "label": "Cushioning", "value": "ReactX Foam + Dual Air Zoom" },
+      { "label": "Heel-to-Toe Drop", "value": "10mm" },
+      { "label": "Weight", "value": "297g (Men size 10)" }
+    ]
+  },
+  {
+    "id": "d-anker-soundcore-motion-300",
+    "slug": "anker-soundcore-motion-300-hi-res-bluetooth-speaker",
+    "title": "Anker Soundcore Motion 300 Wireless Hi-Res Portable Speaker",
+    "summary": "SmartTune technology automatically adapts EQ based on orientation. 30W stereo sound, IPX7 waterproof, and 13h battery.",
+    "description": "Take audiophile-grade outdoor sound anywhere. The Motion 300 features a built-in gravity sensor that dynamically adjusts sound delivery whether it is standing on a patio table or strapped to your backpack on the trail.",
+    "category": "Electronics",
+    "storeName": "Anker",
+    "storeSlug": "anker",
+    "originalPrice": 79.99,
+    "dealPrice": 59.99,
+    "discountPercent": 25,
+    "couponCode": "MOTION25",
+    "affiliateUrl": "https://www.anker.com/?cj_ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=800&q=80",
+    "badge": "Best Seller",
+    "status": "active",
+    "expiryDate": "2026-10-29",
+    "verifiedDate": "Today, Oct 23",
+    "rating": 4.7,
+    "reviewCount": 118,
+    "terms": "Applies to Mirage Green and Frost Blue colorways. Limited time manufacturer voucher.",
+    "pros": [
+      "SmartTune orientation-aware acoustic sound processing",
+      "Wireless Hi-Res LDAC playback support",
+      "IPX7 submersible waterproof for beach and pool use"
+    ],
+    "cons": [
+      "No built-in microphone for speakerphone calls"
+    ],
+    "specs": [
+      { "label": "Output Power", "value": "30W Stereo" },
+      { "label": "Battery Life", "value": "13 Hours Continuous" },
+      { "label": "Waterproof", "value": "IPX7 Submersible" },
+      { "label": "Codecs", "value": "LDAC, AAC, SBC" }
+    ]
+  },
+  {
+    "id": "d-ugreen-revodok-pro-docking-station",
+    "slug": "ugreen-revodok-pro-11-in-1-usb-c-docking-station",
+    "title": "Ugreen Revodok Pro 11-in-1 Dual 4K HDMI USB-C Hub",
+    "summary": "Dual 4K@60Hz HDMI display outputs, 100W Power Delivery pass-through, Gigabit Ethernet, SD/TF card reader, and 5Gbps USB-A.",
+    "description": "Transform any MacBook, Dell XPS, or ThinkPad laptop into a high-productivity dual-monitor workstation with single-cable USB-C convenience. Aluminum shell for rapid heat dissipation and zero interference.",
+    "category": "Electronics",
+    "storeName": "Ugreen",
+    "storeSlug": "ugreen",
+    "originalPrice": 69.99,
+    "dealPrice": 45.49,
+    "discountPercent": 35,
+    "couponCode": "REVODOK35",
+    "affiliateUrl": "https://www.ugreen.com/?ref=bargorya",
+    "imageUrl": "https://images.unsplash.com/photo-1544652478-6653e09f18a2?auto=format&fit=crop&w=800&q=80",
+    "badge": "Deal of the Week",
+    "status": "expired",
+    "expiryDate": "2026-10-15",
+    "verifiedDate": "Expired Oct 15",
+    "rating": 4.6,
+    "reviewCount": 82,
+    "terms": "This flash promotion has ended. Check store profile for new October coupons.",
+    "pros": [
+      "Supports dual external displays up to 4K resolution",
+      "Fast 100W Power Delivery pass-through laptop charging",
+      "Robust all-metal aluminum enclosure"
+    ],
+    "cons": [
+      "macOS only supports mirrored displays across dual HDMI due to SST limits"
+    ],
+    "specs": [
+      { "label": "Video Output", "value": "Dual 4K@60Hz HDMI" },
+      { "label": "Power Delivery", "value": "100W PD 3.0" },
+      { "label": "Network", "value": "1000Mbps Gigabit RJ45" },
+      { "label": "Card Reader", "value": "SD / MicroSD UHS-I" }
+    ]
+  }
+]
