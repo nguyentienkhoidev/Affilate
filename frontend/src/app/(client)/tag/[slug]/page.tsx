@@ -8,6 +8,7 @@ import { Article } from '@/types/deals';
 import postService from '@/services/postService';
 import tagService, { type TagItem } from '@/services/tagService';
 import Pagination from '@/components/admin/Pagination';
+import ArticleCard from '@/components/deals/ArticleCard';
 import {
   Calendar,
   Clock,
@@ -350,88 +351,7 @@ export default function TagArchivePage({ params }: TagPageProps) {
         ) : articles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article) => (
-              <article
-                key={article.id}
-                className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl overflow-hidden shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between group"
-              >
-                <div>
-                  <Link
-                    href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}
-                    className="block relative aspect-[16/10] overflow-hidden bg-slate-100"
-                  >
-                    {article.imageUrl ? (
-                      <Image
-                        src={article.imageUrl}
-                        alt={article.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center">
-                        <BookOpen size={36} className="text-white/25" />
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3 bg-[#c62828] text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded shadow-xs">
-                      {article.category}
-                    </div>
-                  </Link>
-
-                  <div className="p-5 space-y-2.5">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                      {article.publishedAt && (
-                        <span className="flex items-center gap-1 font-medium">
-                          <Calendar size={12} /> {article.publishedAt}
-                        </span>
-                      )}
-                      {article.publishedAt && article.readTime && <span>•</span>}
-                      {article.readTime && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} /> {article.readTime}
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="font-bold text-base text-slate-900 group-hover:text-[#c62828] transition leading-snug line-clamp-2">
-                      <Link href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}>
-                        {article.title}
-                      </Link>
-                    </h3>
-
-                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
-                      {article.excerpt}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full overflow-hidden relative border border-slate-200 bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {article.author.avatar ? (
-                        <Image
-                          src={article.author.avatar}
-                          alt={article.author.name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <span>{article.author.name.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <span className="font-semibold text-slate-700 text-[11px]">
-                      {article.author.name}
-                    </span>
-                  </div>
-
-                  <Link
-                    href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}
-                    className="text-[#c62828] font-bold text-xs inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-                  >
-                    <span>Read Review</span>
-                    <ChevronRight size={14} />
-                  </Link>
-                </div>
-              </article>
+              <ArticleCard key={article.id} article={article} />
             ))}
           </div>
         ) : (

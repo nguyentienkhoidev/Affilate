@@ -45,3 +45,5 @@ databaseChangeLog:
       file: db/changelog/changes/022-seed-menu-and-user-validation-i18n.sql
   - include:
       file: db/changelog/changes/023-fix-post-category-and-tag-mappings.sql
+  - include:
+      file: db/changelog/changes/024-seed-article-cover-images.sql

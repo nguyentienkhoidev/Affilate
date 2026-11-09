@@ -9,14 +9,17 @@ const nextConfig: NextConfig = {
     turbopackPluginRuntimeStrategy: "forceWorkerThreads",
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**',
+        pathname: '/**',
       },
       {
         protocol: 'http',
         hostname: '**',
+        pathname: '/**',
       },
     ],
   },
