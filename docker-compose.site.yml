@@ -100,11 +100,11 @@ services:
       - shared-gateway-net
       - shared-minio-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 25s
+      start_period: 60s
 
   # ===========================================================================
   # 4. Next.js 16 Frontend
