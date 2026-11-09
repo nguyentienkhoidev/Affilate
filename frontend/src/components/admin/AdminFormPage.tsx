@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Save, SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface AdminFormPageProps {
   title: string;
@@ -27,15 +28,16 @@ export default function AdminFormPage({
   formId,
   submitLabel = 'Save',
   headerActions,
-  width = 'wide',
+  width = 'full',
   children,
 }: AdminFormPageProps) {
+  const { t } = useAdminI18n();
   const widthClass =
     width === 'narrow'
       ? 'max-w-4xl'
       : width === 'full'
-      ? 'w-full max-w-none px-2 sm:px-4 lg:px-6'
-      : 'max-w-6xl';
+      ? 'w-full max-w-none'
+      : 'w-full max-w-none';
 
   return (
     <div className={`space-y-6 mx-auto ${widthClass} w-full`}>
@@ -46,10 +48,10 @@ export default function AdminFormPage({
             href={backHref}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#C62828] transition-colors"
           >
-            <ArrowLeft size={14} /> {backLabel}
+            <ArrowLeft size={14} /> {t(backLabel)}
           </Link>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{title}</h1>
-          {description && <p className="text-xs text-slate-500 max-w-2xl">{description}</p>}
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{t(title)}</h1>
+          {description && <p className="text-xs text-slate-500 max-w-2xl">{t(description)}</p>}
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
@@ -58,14 +60,15 @@ export default function AdminFormPage({
             href={backHref}
             className="h-9 px-4 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center whitespace-nowrap shrink-0 shadow-2xs"
           >
-            Cancel
+            {t('Cancel')}
           </Link>
           <button
             type="submit"
             form={formId}
+            formNoValidate
             className="h-9 px-5 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-[#C62828] hover:bg-[#B71C1C] text-white rounded-xl shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Save size={14} /> {submitLabel}
+            <Save size={14} /> {t(submitLabel)}
           </button>
         </div>
       </div>
@@ -87,6 +90,7 @@ export function FormSection({
   headerRight?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = useAdminI18n();
   return (
     <div
       data-admin-form-section="true"
@@ -94,8 +98,8 @@ export function FormSection({
     >
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">{title}</h2>
-          {description && <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>}
+          <h2 className="text-sm font-bold text-slate-900">{t(title)}</h2>
+          {description && <p className="text-[11px] text-slate-500 mt-0.5">{t(description)}</p>}
         </div>
         {headerRight && <div className="shrink-0">{headerRight}</div>}
       </div>

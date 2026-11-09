@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   Edit2,
@@ -14,13 +15,21 @@ import {
   Star,
   FileText,
   CheckCircle2,
-  ListTree,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
+  Store as StoreIcon,
+  Tag,
+  Hash,
+  ExternalLink,
+  Plus,
+  X,
+  BookOpen,
+  Sparkles,
+  PanelRight,
+  Search,
+  AlertCircle,
 } from 'lucide-react';
+import { tagService, type TagItem } from '@/services/tagService';
 import ImageUpload from '@/components/admin/ImageUpload';
-import RichTextEditor, { extractTocFromHtml, type ArticleTocItem } from '@/components/admin/RichTextEditor';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 import AdminFormPage, {
   FormLoading,
   FormNotFound,
@@ -29,12 +38,13 @@ import AdminFormPage, {
   labelClass,
 } from '@/components/admin/AdminFormPage';
 import { ROUTES } from '@/constants/routes';
-import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { STORAGE_KEYS } from '@/constants/ui-constants';
+import { apiClient } from '@/lib/api/axios-client';
+import { useToast } from '@/context/ToastContext';
 import {
-  POSTS_STORE_KEY,
-  DEFAULT_ARTICLES,
-  CLIENT_CATEGORIES,
   type AdminArticle,
+  type CategoryOption,
 } from '../_lib/data';
 
 interface PostFormState {
@@ -43,6 +53,7 @@ interface PostFormState {
   excerpt: string;
   content: string;
   category: string;
+  categoryId?: number;
   authorName: string;
   authorRole: string;
   readTime: string;
@@ -53,6 +64,16 @@ interface PostFormState {
   imageUrl: string;
   featured: boolean;
   tags: string;
+  storeSlug: string;
+  storeName: string;
+  showBrandCard: boolean;
+  showStoreCoupons: boolean;
+  showRelatedReviews: boolean;
+  showGuaranteeCard: boolean;
+  ctaText: string;
+  brandDescription: string;
+  guaranteeTitle: string;
+  guaranteeText: string;
 }
 
 const FORM_ID = 'post-form';
@@ -80,22 +101,124 @@ function getDefaultScheduledTime(): string {
 }
 
 export default function PostForm({ id }: { id?: string }) {
-  const { hydrated, getById } = useAdminCollection<AdminArticle>(POSTS_STORE_KEY, DEFAULT_ARTICLES);
+  return (
+    <Suspense fallback={<FormLoading />}>
+      <PostFormContent id={id} />
+    </Suspense>
+  );
+}
+
+function PostFormContent({ id }: { id?: string }) {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get('category');
   const isEdit = id !== undefined;
-  const existing = getById(id);
 
-  if (isEdit && !hydrated) return <FormLoading />;
-  if (isEdit && !existing) return <FormNotFound backHref={ROUTES.ADMIN.POSTS} entity="Article" />;
+  const [postData, setPostData] = useState<AdminArticle | null>(null);
+  const [loading, setLoading] = useState(isEdit);
+  const [notFound, setNotFound] = useState(false);
 
-  const defaultArticle = DEFAULT_ARTICLES.find((a) => a.id === existing?.id || a.slug === existing?.slug);
-  const hasSubstantialContent = (c?: string) => {
-    if (!c) return false;
-    const stripped = c.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-    return stripped.length > 25 || c.includes('<section') || c.includes('<img');
-  };
-  const resolvedContent = hasSubstantialContent(existing?.content)
-    ? (existing?.content as string)
-    : (defaultArticle?.content || existing?.content || '');
+  useEffect(() => {
+    if (!isEdit || !id) return;
+    let mounted = true;
+    setLoading(true);
+
+    apiClient
+      .get(API_ENDPOINTS.ADMIN.POST_DETAIL(id))
+      .then((res) => {
+        if (!mounted) return;
+        const data = res.data?.data;
+        if (data && (data.id || data.title)) {
+          const now = Date.now();
+          const pubTime = data.publishedAt ? new Date(data.publishedAt).getTime() : 0;
+          const isFuture = pubTime > now;
+          let status: AdminArticle['status'] = 'DRAFT';
+          if (data.status === 'PUBLISHED' || data.status === 'SCHEDULED' || data.status === 'DRAFT') {
+            status = data.status;
+          } else if (data.isActive) {
+            status = isFuture ? 'SCHEDULED' : 'PUBLISHED';
+          }
+
+          let scheduledAt = getDefaultScheduledTime();
+          if (data.publishedAt && isFuture) {
+            const pubDate = new Date(data.publishedAt);
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const yyyy = pubDate.getFullYear();
+            const mm = pad(pubDate.getMonth() + 1);
+            const dd = pad(pubDate.getDate());
+            const hh = pad(pubDate.getHours());
+            const min = pad(pubDate.getMinutes());
+            scheduledAt = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+          }
+
+          const parsedTags: string[] = Array.isArray(data.tags) && data.tags.length > 0
+            ? data.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+            : data.metaKeywords
+              ? String(data.metaKeywords)
+                  .split(',')
+                  .map((k: string) => k.trim())
+                  .filter(Boolean)
+              : [];
+
+          const mapped: AdminArticle = {
+            id: String(data.id),
+            title: data.title || '',
+            slug: data.slug || '',
+            excerpt: data.excerpt || '',
+            content: data.content || '',
+            category: data.categoryName || 'General',
+            categoryId: data.categoryId ? Number(data.categoryId) : undefined,
+            author: {
+              name: data.authorName || 'HeyGoodly Editorial',
+              role: data.authorRole || 'Editorial Reviewer',
+              avatar: data.authorAvatar || '',
+            },
+            readTime: data.readTime || '5 min read',
+            rating: data.rating !== null && data.rating !== undefined ? String(data.rating) : '',
+            views: Number(data.viewCount || data.views || 0),
+            status,
+            publishedAt: data.publishedAt
+              ? new Date(data.publishedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : 'Today',
+            scheduledAt,
+            imageUrl: data.image || '',
+            featured: Boolean(data.isFeatured),
+            tags: parsedTags,
+            storeSlug: data.storeSlug || '',
+            storeName: data.storeName || '',
+            sidebarConfig:
+              data.sidebarConfig && typeof data.sidebarConfig === 'object'
+                ? data.sidebarConfig
+                : undefined,
+          };
+          setPostData(mapped);
+          setNotFound(false);
+        } else {
+          setNotFound(true);
+        }
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        console.error('Failed to fetch article detail from backend:', err);
+        setNotFound(true);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [id, isEdit]);
+
+  if (isEdit && loading) return <FormLoading />;
+  if (isEdit && (notFound || !postData)) return <FormNotFound backHref={ROUTES.ADMIN.POSTS} entity="Article" />;
+
+  const existing = postData || undefined;
+  const resolvedContent = existing?.content || '';
 
   const initial: PostFormState = existing
     ? {
@@ -104,6 +227,7 @@ export default function PostForm({ id }: { id?: string }) {
         excerpt: existing.excerpt,
         content: resolvedContent,
         category: existing.category,
+        categoryId: existing.categoryId,
         authorName: existing.author.name,
         authorRole: existing.author.role,
         readTime: existing.readTime,
@@ -114,6 +238,18 @@ export default function PostForm({ id }: { id?: string }) {
         imageUrl: existing.imageUrl,
         featured: existing.featured,
         tags: existing.tags.join(', '),
+        storeSlug: existing.storeSlug || '',
+        storeName: existing.storeName || '',
+        showBrandCard: existing.sidebarConfig?.showBrandCard !== false,
+        showStoreCoupons: existing.sidebarConfig?.showStoreCoupons !== false,
+        showRelatedReviews: existing.sidebarConfig?.showRelatedReviews !== false,
+        showGuaranteeCard: existing.sidebarConfig?.showGuaranteeCard !== false,
+        ctaText: existing.sidebarConfig?.ctaText || '',
+        brandDescription: existing.sidebarConfig?.brandDescription || '',
+        guaranteeTitle: existing.sidebarConfig?.guaranteeTitle || 'HeyGoodly Testing Guarantee',
+        guaranteeText:
+          existing.sidebarConfig?.guaranteeText ||
+          'Every product reviewed is independently evaluated against real-world benchmarks. We never accept paid placements to alter lab scores.',
       }
     : {
         title: '',
@@ -121,98 +257,206 @@ export default function PostForm({ id }: { id?: string }) {
         excerpt: '',
         content:
           '<h2>Introduction & Testing Methodology</h2><p>Provide a detailed introduction to the product review or news analysis...</p>',
-        category: 'Reviews',
-        authorName: 'Marcus Vance',
-        authorRole: 'Senior Hardware Reviewer',
+        category: categoryParam || 'Reviews',
+        categoryId: categoryParam && !isNaN(Number(categoryParam)) ? Number(categoryParam) : undefined,
+        authorName: (() => {
+          if (typeof window !== 'undefined') {
+            try {
+              const raw = localStorage.getItem(STORAGE_KEYS.USER_DATA);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.fullName) return String(parsed.fullName);
+              }
+            } catch {}
+          }
+          return '';
+        })(),
+        authorRole: (() => {
+          if (typeof window !== 'undefined') {
+            try {
+              const raw = localStorage.getItem(STORAGE_KEYS.USER_DATA);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.roleName) return String(parsed.roleName);
+              }
+            } catch {}
+          }
+          return '';
+        })(),
         readTime: '5 min read',
-        rating: '4.8',
+        rating: '',
         status: 'PUBLISHED',
         publishedAt: 'Today',
         scheduledAt: getDefaultScheduledTime(),
-        imageUrl:
-          'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        imageUrl: '',
         featured: false,
-        tags: 'Tech, Hardware, Lab Test',
+        tags: categoryParam ? `${categoryParam}, Reviews` : 'Tech, Hardware, Lab Test',
+        storeSlug: '',
+        storeName: '',
+        showBrandCard: true,
+        showStoreCoupons: true,
+        showRelatedReviews: true,
+        showGuaranteeCard: true,
+        ctaText: '',
+        brandDescription: '',
+        guaranteeTitle: 'HeyGoodly Testing Guarantee',
+        guaranteeText:
+          'Every product reviewed is independently evaluated against real-world benchmarks. We never accept paid placements to alter lab scores.',
       };
 
   return <PostFormInner key={id ?? 'new'} existing={existing} initial={initial} />;
 }
 
+interface StoreOption {
+  id: number;
+  name: string;
+  slug: string;
+  maxDiscount?: string;
+  rating?: number;
+  activeCoupons?: number;
+  shortDescription?: string;
+  logoUrl?: string;
+}
+
 function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial: PostFormState }) {
   const router = useRouter();
-  const { create, update } = useAdminCollection<AdminArticle>(POSTS_STORE_KEY, DEFAULT_ARTICLES);
+  const { toast } = useToast();
   const [form, setForm] = useState<PostFormState>(initial);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
-  const tocItems = useMemo(() => extractTocFromHtml(form.content), [form.content]);
+  const [stores, setStores] = useState<StoreOption[]>(() => {
+    if (existing?.storeName) {
+      return [
+        {
+          id: 0,
+          name: existing.storeName,
+          slug: existing.storeSlug || '',
+          maxDiscount: '',
+          rating: 0,
+          activeCoupons: 0,
+          shortDescription: `${existing.storeName} verified promo codes`,
+          logoUrl: '',
+        },
+      ];
+    }
+    return [];
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<CategoryOption[]>(() => {
+    if (existing?.categoryId && existing?.category) {
+      return [{ id: existing.categoryId, name: existing.category, slug: '' }];
+    }
+    return [];
+  });
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
 
-  // Jump to section in editor from right sidebar TOC
-  const handleJumpToSection = (label: string, index: number) => {
-    const editorEl = document.querySelector('[contenteditable="true"]');
-    if (editorEl) {
-      const headings = Array.from(editorEl.querySelectorAll('h2, h3, h4'));
-      const target = headings.find((h) => h.textContent?.trim() === label) || headings[index];
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.classList.add('ring-2', 'ring-[#C62828]', 'bg-rose-50/70', 'transition-all', 'duration-500');
-        setTimeout(() => {
-          target.classList.remove('ring-2', 'ring-[#C62828]', 'bg-rose-50/70', 'transition-all', 'duration-500');
-        }, 1800);
-        return;
+  const loadCategoriesOnDemand = async () => {
+    if (hasLoadedCategories) return;
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORIES);
+      const list = res.data?.data?.content || res.data?.data;
+      if (Array.isArray(list)) {
+        setCategories(
+          list.map((c: any) => ({
+            id: Number(c.id),
+            name: String(c.name),
+            slug: String(c.slug),
+          }))
+        );
+        setHasLoadedCategories(true);
       }
-      editorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    } catch {}
   };
 
-  // Delete a section directly from the TOC outline
-  const handleDeleteSection = (label: string, index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!form.content) return;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(form.content, 'text/html');
-    const headings = Array.from(doc.querySelectorAll('h2, h3, h4'));
-    const target = headings.find((h) => h.textContent?.trim() === label) || headings[index];
-    if (target) {
-      const section = target.closest('section, .editorial-box, .article-component, figure') || target;
-      section.remove();
-      setForm((prev) => ({ ...prev, content: doc.body.innerHTML }));
-    }
-  };
-
-  // Move section up
-  const handleMoveSectionUp = (label: string, index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!form.content) return;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(form.content, 'text/html');
-    const headings = Array.from(doc.querySelectorAll('h2, h3, h4'));
-    const target = headings.find((h) => h.textContent?.trim() === label) || headings[index];
-    if (target) {
-      const section = target.closest('section, .editorial-box, .article-component, figure') || target;
-      const prev = section.previousElementSibling;
-      if (prev) {
-        section.parentElement?.insertBefore(section, prev);
-        setForm((prev) => ({ ...prev, content: doc.body.innerHTML }));
+  const loadStoresOnDemand = async () => {
+    if (stores.length > 1) return;
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.ADMIN.STORES, { params: { size: 100 } });
+      const list = res.data?.data?.content || res.data?.data;
+      if (Array.isArray(list)) {
+        setStores(
+          list.map((s: any) => ({
+            id: Number(s.id),
+            name: String(s.name),
+            slug: String(s.slug),
+            maxDiscount: s.maxOffer ? `Up to ${s.maxOffer}% OFF` : '',
+            rating: Number(s.ratingScore ?? 0),
+            activeCoupons: Number(s.activeOffersCount ?? 0),
+            shortDescription: s.aboutStore || s.description || `${s.name} promo codes`,
+            logoUrl: s.logo || s.logoUrl || '',
+          }))
+        );
       }
-    }
+    } catch {}
   };
 
-  // Move section down
-  const handleMoveSectionDown = (label: string, index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!form.content) return;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(form.content, 'text/html');
-    const headings = Array.from(doc.querySelectorAll('h2, h3, h4'));
-    const target = headings.find((h) => h.textContent?.trim() === label) || headings[index];
-    if (target) {
-      const section = target.closest('section, .editorial-box, .article-component, figure') || target;
-      const next = section.nextElementSibling;
-      if (next) {
-        section.parentElement?.insertBefore(next, section);
-        setForm((prev) => ({ ...prev, content: doc.body.innerHTML }));
+  const [centralTags, setCentralTags] = useState<TagItem[]>([]);
+  const [loadedTags, setLoadedTags] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState('');
+
+  const loadTagsOnDemand = async () => {
+    if (loadedTags) return;
+    try {
+      const data = await tagService.getPublicTags();
+      if (Array.isArray(data)) {
+        setCentralTags(data);
+        setLoadedTags(true);
       }
-    }
+    } catch {}
   };
+
+  useEffect(() => {
+    loadTagsOnDemand();
+  }, []);
+
+  const currentTagList = form.tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const filteredCentralTags = useMemo(() => {
+    if (!tagSearchQuery.trim()) {
+      // Sort with selected tags at front, then alphabetical
+      return [...centralTags].sort((a, b) => {
+        const aSelected = currentTagList.some(
+          (t) => t.toLowerCase() === a.slug.toLowerCase() || t.toLowerCase() === a.name.toLowerCase()
+        );
+        const bSelected = currentTagList.some(
+          (t) => t.toLowerCase() === b.slug.toLowerCase() || t.toLowerCase() === b.name.toLowerCase()
+        );
+        if (aSelected !== bSelected) return aSelected ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    const q = tagSearchQuery.toLowerCase().trim();
+    return centralTags.filter(
+      (item) => item.name.toLowerCase().includes(q) || item.slug.toLowerCase().includes(q)
+    );
+  }, [centralTags, tagSearchQuery, currentTagList]);
+
+  const toggleTag = (tagNameOrSlug: string) => {
+    const clean = tagNameOrSlug.trim();
+    if (!clean) return;
+    const exists = currentTagList.some((t) => t.toLowerCase() === clean.toLowerCase());
+    let next: string[];
+    if (exists) {
+      next = currentTagList.filter((t) => t.toLowerCase() !== clean.toLowerCase());
+    } else {
+      next = [...currentTagList, clean];
+    }
+    setForm({ ...form, tags: next.join(', ') });
+  };
+
+  // Auto-detect or resolve selected store for live preview in Admin
+  const selectedStore =
+    stores.find((s) => s.slug === form.storeSlug) ||
+    stores.find(
+      (s) =>
+        (form.slug && form.slug.toLowerCase().includes(s.slug.toLowerCase())) ||
+        (form.title && form.title.toLowerCase().includes(s.name.toLowerCase()))
+    );
+  const previewStoreName = form.storeName.trim() || selectedStore?.name || '';
+  const previewStoreDiscount = selectedStore?.maxDiscount || '';
+  const previewStoreRating = selectedStore?.rating || 0;
 
   const setQuickSchedule = (hoursAhead: number) => {
     const d = new Date();
@@ -231,80 +475,92 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
     setForm((prev) => ({ ...prev, scheduledAt: val }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+
     const cleanSlug = form.slug.trim() || generateSlug(form.title);
     const parsedTags = form.tags
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
 
-    let finalPublishedAt = form.publishedAt;
+    let finalPublishedAt: string;
+    let isActive = true;
+
     if (form.status === 'SCHEDULED') {
       const scheduleDate = new Date(form.scheduledAt);
-      const formattedDate = !isNaN(scheduleDate.getTime())
-        ? scheduleDate.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : form.scheduledAt;
-      finalPublishedAt = `${formattedDate} (Scheduled)`;
+      if (isNaN(scheduleDate.getTime()) || scheduleDate.getTime() <= Date.now()) {
+        toast.error('Scheduled publish time must be in the future.');
+        return;
+      }
+      isActive = true;
+      finalPublishedAt = scheduleDate.toISOString();
     } else if (form.status === 'DRAFT') {
-      finalPublishedAt = 'Draft';
+      isActive = false;
+      finalPublishedAt = new Date().toISOString();
     } else {
-      finalPublishedAt = form.publishedAt.trim() || 'Today';
+      // PUBLISHED
+      isActive = true;
+      finalPublishedAt = new Date().toISOString();
     }
 
-    if (existing) {
-      update(existing.id, {
-        title: form.title,
-        slug: cleanSlug,
-        excerpt: form.excerpt,
-        content: form.content,
-        category: form.category,
-        author: {
-          name: form.authorName,
-          role: form.authorRole,
-          avatar: existing.author.avatar,
-        },
-        readTime: form.readTime,
-        rating: form.rating,
-        status: form.status,
-        publishedAt: finalPublishedAt,
-        scheduledAt: form.status === 'SCHEDULED' ? form.scheduledAt : undefined,
-        imageUrl: form.imageUrl,
-        featured: form.featured,
-        tags: parsedTags,
-      });
-    } else {
-      create({
-        id: `art-${Date.now()}`,
-        title: form.title,
-        slug: cleanSlug,
-        excerpt: form.excerpt,
-        content: form.content,
-        category: form.category,
-        author: {
-          name: form.authorName,
-          role: form.authorRole,
-          avatar:
-            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-        },
-        publishedAt: finalPublishedAt,
-        scheduledAt: form.status === 'SCHEDULED' ? form.scheduledAt : undefined,
-        readTime: form.readTime,
-        imageUrl: form.imageUrl,
-        featured: form.featured,
-        tags: parsedTags,
-        rating: form.rating,
-        status: form.status,
-        views: 0,
-      });
+    const sidebarConfig = {
+      showBrandCard: form.showBrandCard,
+      showStoreCoupons: form.showStoreCoupons,
+      showRelatedReviews: form.showRelatedReviews,
+      showGuaranteeCard: form.showGuaranteeCard,
+      ctaText: form.ctaText.trim(),
+      brandDescription: form.brandDescription.trim(),
+      guaranteeTitle: form.guaranteeTitle.trim() || 'HeyGoodly Testing Guarantee',
+      guaranteeText:
+        form.guaranteeText.trim() ||
+        'Every product reviewed is independently evaluated against real-world benchmarks. We never accept paid placements to alter lab scores.',
+    };
+
+    const numericRating =
+      form.rating && !isNaN(Number(form.rating)) && Number(form.rating) > 0
+        ? Number(form.rating)
+        : null;
+
+    const payload = {
+      title: form.title.trim(),
+      slug: cleanSlug,
+      excerpt: form.excerpt.trim(),
+      content: form.content,
+      categoryId: form.categoryId,
+      storeSlug: form.storeSlug.trim() || null,
+      image: form.imageUrl.trim(),
+      readTime: form.readTime.trim() || null,
+      rating: numericRating,
+      isFeatured: form.featured,
+      isActive: isActive,
+      publishedAt: finalPublishedAt,
+      status: form.status,
+      tags: parsedTags,
+      sidebarConfig,
+      metaTitle: form.title.trim(),
+      metaDescription: form.excerpt.trim(),
+      metaKeywords: parsedTags.join(', '),
+    };
+
+    try {
+      if (existing) {
+        await apiClient.put(API_ENDPOINTS.ADMIN.POST_DETAIL(existing.id), payload);
+        const res = await apiClient.put(API_ENDPOINTS.ADMIN.POST_DETAIL(existing.id), payload);
+        toast.success(res.data?.message || `Saved "${form.title}" successfully!`);
+      } else {
+        const res = await apiClient.post(API_ENDPOINTS.ADMIN.POSTS, payload);
+        toast.success(res.data?.message || `Published "${form.title}" successfully!`);
+      }
+      router.push(ROUTES.ADMIN.POSTS);
+    } catch (err: any) {
+      if (err?.response?.data?.errors && typeof err.response.data.errors === 'object') {
+        setErrors(err.response.data.errors);
+      }
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save article.';
+      toast.error(msg);
     }
-    router.push(ROUTES.ADMIN.POSTS);
   };
 
   const submitLabel =
@@ -359,7 +615,7 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
       width="full"
     >
       {activeTab === 'edit' ? (
-        <form id={FORM_ID} onSubmit={handleSave} className="space-y-6">
+        <form noValidate id={FORM_ID} onSubmit={handleSave} className="space-y-6">
           {/* TOP ROW: HEADLINE & SUMMARY + PUBLISHING SETTINGS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Left 2 Cols: Headline & Excerpt */}
@@ -369,7 +625,6 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                   <label className={labelClass}>Headline / Title *</label>
                   <input
                     type="text"
-                    required
                     value={form.title}
                     onChange={(e) => {
                       const newTitle = e.target.value;
@@ -378,10 +633,16 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                         title: newTitle,
                         slug: existing ? form.slug : generateSlug(newTitle),
                       });
+                      if (errors.title) setErrors((prev) => ({ ...prev, title: '' }));
                     }}
                     placeholder="e.g. Nilight 20-Inch Curved LED Light Bar: 500-Mile Extreme Off-Road Test"
-                    className={`${inputClass} font-semibold`}
+                    className={`${inputClass} font-semibold ${errors.title ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
                   />
+                  {errors.title && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle size={11} /> {errors.title}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -393,19 +654,25 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                   </label>
                   <input
                     type="text"
-                    required
                     value={form.slug}
-                    onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, slug: e.target.value });
+                      if (errors.slug) setErrors((prev) => ({ ...prev, slug: '' }));
+                    }}
                     placeholder="nilight-led-light-bar-review"
-                    className={`${inputClass} font-mono`}
+                    className={`${inputClass} font-mono ${errors.slug ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
                   />
+                  {errors.slug && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle size={11} /> {errors.slug}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   <label className={labelClass}>Summary / Lead Excerpt *</label>
                   <textarea
                     rows={3}
-                    required
                     value={form.excerpt}
                     onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
                     placeholder="Concise 1-2 sentence executive summary displayed on cards and under headline..."
@@ -482,15 +749,14 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
                           <CalendarClock size={14} className="text-indigo-600" />
-                          <span>Thời gian Public (Scheduled Time) *</span>
+                          <span>Scheduled Publish Time *</span>
                         </label>
                         <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-md">
-                          GMT+7 VN
+                          GMT+7
                         </span>
                       </div>
                       <input
                         type="datetime-local"
-                        required
                         value={form.scheduledAt}
                         onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
                         className="w-full text-xs bg-white border border-indigo-200 rounded-xl px-3 py-2 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-2xs cursor-pointer"
@@ -508,34 +774,34 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                           onClick={() => setQuickSchedule(1)}
                           className="text-[11px] font-medium bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
                         >
-                          +1 Giờ
+                          +1 Hour
                         </button>
                         <button
                           type="button"
                           onClick={() => setQuickSchedule(3)}
                           className="text-[11px] font-medium bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
                         >
-                          +3 Giờ
+                          +3 Hours
                         </button>
                         <button
                           type="button"
                           onClick={() => setTomorrowSchedule(9)}
                           className="text-[11px] font-medium bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
                         >
-                          Sáng mai (09:00)
+                          Tomorrow Morning (09:00)
                         </button>
                         <button
                           type="button"
                           onClick={() => setTomorrowSchedule(20)}
                           className="text-[11px] font-medium bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
                         >
-                          Tối mai (20:00)
+                          Tomorrow Evening (20:00)
                         </button>
                       </div>
                     </div>
 
                     <p className="text-[11px] text-indigo-700/80 leading-relaxed">
-                      💡 Bài viết sẽ được tự động xuất bản công khai lên trang chủ và các chuyên mục vào đúng thời gian đã lên lịch.
+                      💡 This article will be automatically published to the homepage and category pages at the scheduled time.
                     </p>
                   </div>
                 )}
@@ -544,8 +810,8 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                 {form.status === 'PUBLISHED' && (
                   <div className="space-y-1 pt-1">
                     <label className={`${labelClass} flex items-center justify-between`}>
-                      <span>Ngày hiển thị công khai (Public Date)</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Mặc định: Today</span>
+                      <span>Public Display Date</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Default: Today</span>
                     </label>
                     <input
                       type="text"
@@ -577,118 +843,64 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
           <div className="w-full">
             <FormSection
               title="Article Body Content"
-              description="Không gian soạn thảo toàn màn hình 100% • Hỗ trợ Tiêu đề, Hộp Deal, Bảng Pros/Cons, Media & Tùy biến Style"
+              description="Microsoft Word Studio Editor • Full support for Font Family, Font Size, Data Tables, Alignment, A4 Paper View & Affiliate Blocks"
               headerRight={
-                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1 rounded-xl shadow-2xs">
-                  Không gian 100% Full-Width
+                <span className="text-[11px] font-bold text-[#2b579a] bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl shadow-2xs flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#2b579a] animate-pulse"></span>
+                  <span>Microsoft Word Studio</span>
                 </span>
               }
             >
               <RichTextEditor
                 value={form.content}
-                onChange={(html) => setForm({ ...form, content: html })}
+                onChange={(html) => {
+                  setForm({ ...form, content: html });
+                  if (errors.content) setErrors((prev) => ({ ...prev, content: '' }));
+                }}
                 minHeight="560px"
               />
+              {errors.content && (
+                <p className="text-[11px] font-semibold text-rose-600 mt-2 flex items-center gap-1">
+                  <AlertCircle size={11} /> {errors.content}
+                </p>
+              )}
             </FormSection>
           </div>
 
-          {/* BOTTOM METADATA GRID: TOC, CATEGORY & MEDIA, AUTHOR & BENCHMARKS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-            {/* Live Table of Contents (Mục Lục) */}
-            <FormSection
-              title="Table of Contents (Mục Lục)"
-              description="Dàn ý nội dung bài viết thời gian thực — click để nhảy nhanh đến vị trí trong bài"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <ListTree size={13} className="text-[#C62828]" />
-                    <span>Cấu trúc đề mục</span>
-                  </span>
-                  <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
-                    {tocItems.length} mục
-                  </span>
-                </div>
-
-                {tocItems.length === 0 ? (
-                  <div className="p-3.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center space-y-1">
-                    <p className="text-xs font-semibold text-slate-600">Chưa có tiêu đề bài viết</p>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Thêm tiêu đề H2 hoặc bấm <strong>+ Thêm Component</strong> để tự động hiển thị mục lục tại đây.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                    {tocItems.map((item, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => handleJumpToSection(item.label, idx)}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition flex items-center justify-between group cursor-pointer border ${
-                          item.level === 'h2'
-                            ? 'bg-white hover:bg-rose-50/70 border-slate-200/80 text-slate-800 font-bold shadow-2xs'
-                            : 'bg-slate-50/70 hover:bg-slate-100 border-transparent text-slate-600 font-medium pl-4 text-[11px]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 pr-1">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              item.level === 'h2' ? 'bg-[#C62828]' : 'bg-slate-400'
-                            }`}
-                          />
-                          <span className="truncate group-hover:text-[#C62828] transition">
-                            {item.label}
-                          </span>
-                        </div>
-
-                        {/* Quick Actions: Move Up, Move Down, Delete Section */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => handleMoveSectionUp(item.label, idx, e)}
-                            className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
-                            title="Di chuyển lên"
-                          >
-                            <ArrowUp size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleMoveSectionDown(item.label, idx, e)}
-                            className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
-                            title="Di chuyển xuống"
-                          >
-                            <ArrowDown size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteSection(item.label, idx, e)}
-                            className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
-                            title="Xóa đề mục này"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </FormSection>
-
+          {/* BOTTOM METADATA GRID: CATEGORY & MEDIA, AUTHOR & BENCHMARKS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             {/* Category & Media */}
             <FormSection title="Category & Media">
               <div className="space-y-1">
                 <label className={labelClass}>Editorial Category *</label>
                 <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className={inputClass}
+                  value={form.categoryId ?? ''}
+                  onFocus={loadCategoriesOnDemand}
+                  onClick={loadCategoriesOnDemand}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    const found = categories.find((c) => c.id === val);
+                    setForm({
+                      ...form,
+                      categoryId: val,
+                      category: found ? found.name : form.category,
+                    });
+                    if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: '' }));
+                  }}
+                  className={`${inputClass} ${errors.categoryId ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
                 >
-                  {CLIENT_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
+                  <option value="">Select Editorial Category...</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
+                {errors.categoryId && (
+                  <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={11} /> {errors.categoryId}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1 pt-2">
@@ -748,15 +960,403 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                 </div>
               </div>
 
-              <div className="space-y-1 pt-1">
-                <label className={labelClass}>Tags (Comma-separated)</label>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Hash size={13} className="text-rose-600" />
+                    <span>Taxonomy Tags</span>
+                  </label>
+                  <Link
+                    href={ROUTES.ADMIN.TAGS}
+                    target="_blank"
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 hover:underline"
+                    title="Manage all tags centrally"
+                  >
+                    <span>Manage Tags</span>
+                    <ExternalLink size={10} />
+                  </Link>
+                </div>
+
+                {/* Comma-separated or text input with on-demand central tags loader */}
                 <input
                   type="text"
                   value={form.tags}
+                  onFocus={loadTagsOnDemand}
+                  onClick={loadTagsOnDemand}
                   onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  placeholder="Tech, LED, Review, 2026"
+                  placeholder="e.g. Tech, Reviews, Apple, Deals"
                   className={inputClass}
                 />
+
+                {/* Selected Tag Pills */}
+                {currentTagList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {currentTagList.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-[#C62828] border border-rose-200 shadow-2xs"
+                      >
+                        <span>#{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className="hover:bg-rose-200/60 rounded-full p-0.5 cursor-pointer ml-0.5"
+                          title={`Remove #${tag}`}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Centralized Taxonomy Tag Quick Selector */}
+                {centralTags.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] font-bold text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles size={12} className="text-amber-500" />
+                        <span>Central taxonomy tags (click to toggle):</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {tagSearchQuery
+                          ? `Showing ${filteredCentralTags.length} of ${centralTags.length} tags`
+                          : `All ${centralTags.length} registered tags in system`}
+                      </span>
+                    </div>
+
+                    {/* Filter search bar for tags */}
+                    <div className="relative">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={tagSearchQuery}
+                        onChange={(e) => setTagSearchQuery(e.target.value)}
+                        placeholder="Filter central tags (e.g. google, ai, tech, deals)..."
+                        className="w-full text-xs pl-8 pr-7 py-1.5 bg-white border border-slate-200/90 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition shadow-2xs"
+                      />
+                      {tagSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setTagSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                          title="Clear search"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Tag Pills Container - Displays ALL tags without slicing */}
+                    <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                      {filteredCentralTags.length > 0 ? (
+                        filteredCentralTags.map((item) => {
+                          const isSelected = currentTagList.some(
+                            (t) => t.toLowerCase() === item.slug.toLowerCase() || t.toLowerCase() === item.name.toLowerCase()
+                          );
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => toggleTag(item.name || item.slug)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 ${
+                                isSelected
+                                  ? 'bg-rose-600 text-white border border-rose-600 font-bold ring-1 ring-rose-600/30'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: isSelected ? '#ffffff' : (item.color || '#6366f1') }}
+                              />
+                              <span>#{item.name}</span>
+                              {isSelected ? <X size={10} className="stroke-[2.5]" /> : <Plus size={10} />}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="w-full text-center py-3 text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                          <span>No tags match "{tagSearchQuery}".</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleTag(tagSearchQuery);
+                              setTagSearchQuery('');
+                            }}
+                            className="text-rose-600 font-bold hover:underline cursor-pointer"
+                          >
+                            + Add #{tagSearchQuery} as new tag
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FormSection>
+          </div>
+
+          {/* RIGHT SIDEBAR & AFFILIATE STORE CONFIGURATION */}
+          <div className="w-full">
+            <FormSection
+              title="Right Sidebar & Affiliate Store Configuration"
+              description="Configure the partner store, active promo codes, related reviews, and editorial guarantee displayed in the article right sidebar"
+              headerRight={
+                <span className="text-[11px] font-bold text-[#C62828] bg-red-50 border border-red-200 px-3 py-1 rounded-xl flex items-center gap-1.5">
+                  <PanelRight size={13} />
+                  <span>Right Sidebar Config</span>
+                </span>
+              }
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left 7 Cols: Controls */}
+                <div className="lg:col-span-7 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className={labelClass}>Target Partner Store</label>
+                      <select
+                        value={form.storeSlug}
+                        onFocus={loadStoresOnDemand}
+                        onClick={loadStoresOnDemand}
+                        onChange={(e) => {
+                          const chosenSlug = e.target.value;
+                          const matched = stores.find((s) => s.slug === chosenSlug);
+                          setForm({
+                            ...form,
+                            storeSlug: chosenSlug,
+                            storeName: matched ? matched.name : form.storeName,
+                          });
+                        }}
+                        className={inputClass}
+                      >
+                        <option value="">✨ Auto-detect from title / slug</option>
+                        {stores.map((s) => (
+                          <option key={s.id} value={s.slug}>
+                            {s.name} ({s.maxDiscount} • {s.activeCoupons} codes)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className={labelClass}>Store Display Name (Optional Override)</label>
+                      <input
+                        type="text"
+                        value={form.storeName}
+                        onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+                        placeholder={selectedStore?.name || 'e.g. Neo Sabers'}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className={labelClass}>CTA Button Text</label>
+                      <input
+                        type="text"
+                        value={form.ctaText}
+                        onChange={(e) => setForm({ ...form, ctaText: e.target.value })}
+                        placeholder={`Get Promo Code (${selectedStore?.activeCoupons || 6} Active) →`}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className={labelClass}>Short Description Under Store Name</label>
+                      <input
+                        type="text"
+                        value={form.brandDescription}
+                        onChange={(e) => setForm({ ...form, brandDescription: e.target.value })}
+                        placeholder={
+                          selectedStore?.shortDescription ||
+                          `Updated daily with hand-tested promo codes for ${previewStoreName}.`
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Widget Toggles */}
+                  <div className="space-y-2 pt-1">
+                    <label className={labelClass}>Right Sidebar Widget Visibility</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 cursor-pointer transition">
+                        <input
+                          type="checkbox"
+                          checked={form.showBrandCard}
+                          onChange={(e) => setForm({ ...form, showBrandCard: e.target.checked })}
+                          className="mt-0.5 rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <StoreIcon size={13} className="text-[#C62828]" />
+                            <span>1. Brand Deals Card</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Store logo, rating stars, summary, and promo code CTA button.
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 cursor-pointer transition">
+                        <input
+                          type="checkbox"
+                          checked={form.showStoreCoupons}
+                          onChange={(e) => setForm({ ...form, showStoreCoupons: e.target.checked })}
+                          className="mt-0.5 rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Tag size={13} className="text-[#C62828]" />
+                            <span>2. Active Promo Codes</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Displays up to 3 active coupons for the selected store.
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 cursor-pointer transition">
+                        <input
+                          type="checkbox"
+                          checked={form.showRelatedReviews}
+                          onChange={(e) => setForm({ ...form, showRelatedReviews: e.target.checked })}
+                          className="mt-0.5 rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <BookOpen size={13} className="text-[#C62828]" />
+                            <span>3. Related Lab Reviews</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Recommends related reviews in the same category with thumbnails.
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 cursor-pointer transition">
+                        <input
+                          type="checkbox"
+                          checked={form.showGuaranteeCard}
+                          onChange={(e) => setForm({ ...form, showGuaranteeCard: e.target.checked })}
+                          className="mt-0.5 rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <ShieldCheck size={13} className="text-emerald-600" />
+                            <span>4. Testing Guarantee &amp; Tags</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Independent testing guarantee box with #tag pills.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Guarantee Text Customization */}
+                  {form.showGuaranteeCard && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                      <div className="space-y-1">
+                        <label className={labelClass}>Guarantee Box Title</label>
+                        <input
+                          type="text"
+                          value={form.guaranteeTitle}
+                          onChange={(e) => setForm({ ...form, guaranteeTitle: e.target.value })}
+                          placeholder="HeyGoodly Testing Guarantee"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className={labelClass}>Guarantee Description</label>
+                        <input
+                          type="text"
+                          value={form.guaranteeText}
+                          onChange={(e) => setForm({ ...form, guaranteeText: e.target.value })}
+                          placeholder="Every product reviewed is independently evaluated..."
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right 5 Cols: Mini Live Preview of the Right Sidebar */}
+                <div className="lg:col-span-5 bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-200">
+                    <span>Right Sidebar Preview</span>
+                    <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
+                      Live Sync
+                    </span>
+                  </div>
+
+                  {form.showBrandCard && (
+                    <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs space-y-2.5 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white font-black text-lg flex items-center justify-center mx-auto overflow-hidden border border-slate-200">
+                        {selectedStore?.logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={selectedStore.logoUrl}
+                            alt={previewStoreName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{previewStoreName.substring(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full tracking-widest">
+                          <Sparkles size={10} /> Brand Deals • Up to {previewStoreDiscount}
+                        </span>
+                        <h4 className="font-black text-sm text-slate-900">{previewStoreName}</h4>
+                        <div className="flex items-center justify-center gap-1 text-[11px] text-slate-500">
+                          <Star size={11} className="fill-amber-400 text-amber-400" />
+                          <span className="font-bold text-slate-800">{previewStoreRating.toFixed(1)}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-2">
+                          {form.brandDescription.trim() ||
+                            selectedStore?.shortDescription ||
+                            `Updated daily with hand-tested promo codes and direct manufacturer discounts for ${previewStoreName}.`}
+                        </p>
+                      </div>
+                      <div className="w-full py-2 bg-red-700 text-white font-black text-[11px] rounded-lg">
+                        {form.ctaText.trim() || `Get Promo Code (${selectedStore?.activeCoupons || 6} Active) →`}
+                      </div>
+                    </div>
+                  )}
+
+                  {form.showStoreCoupons && (
+                    <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between text-xs font-black text-slate-900">
+                        <span className="flex items-center gap-1.5">
+                          <Tag size={13} className="text-red-700" />
+                          Active {previewStoreName} Codes
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between text-[11px]">
+                        <span className="font-black text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                          {previewStoreDiscount}
+                        </span>
+                        <span className="font-mono font-bold text-slate-700 bg-white border border-dashed border-slate-300 px-2 py-0.5 rounded">
+                          SAVE20
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {form.showGuaranteeCard && (
+                    <div className="bg-slate-900 text-white rounded-xl p-3.5 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-bold">
+                        <ShieldCheck size={14} />
+                        <span>{form.guaranteeTitle || 'HeyGoodly Testing Guarantee'}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                        {form.guaranteeText}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </FormSection>
           </div>
@@ -768,7 +1368,7 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
             <div className="flex items-center gap-2">
               <Eye size={16} className="text-amber-700 shrink-0" />
               <span>
-                <strong>Live Reader Mode:</strong> Simulating reader experience on the public portal.
+                <strong>Live Reader Mode:</strong> Simulating reader experience on the public portal (including Right Sidebar).
               </span>
             </div>
             <button
@@ -780,7 +1380,7 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
             </button>
           </div>
 
-          <div className="max-w-5xl mx-auto space-y-8">
+          <div className="max-w-6xl mx-auto space-y-8">
             <nav className="flex items-center gap-2 text-xs text-slate-500">
               <span>Home</span>
               <ChevronRight size={12} />
@@ -821,13 +1421,13 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                   </div>
                   <div>
                     <div className="font-extrabold text-slate-900 text-sm">{form.authorName}</div>
-                    <div className="text-xs text-slate-500">{form.authorRole} • Bargorya Staff</div>
+                    <div className="text-xs text-slate-500">{form.authorRole} • HeyGoodly Staff</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-lg">
                   <ShieldCheck size={14} className="text-emerald-600" />
-                  <span>Verified Testing & Lab Benchmarks</span>
+                  <span>Editorial Testing &amp; Lab Benchmarks</span>
                 </div>
               </div>
             </div>
@@ -844,137 +1444,92 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
               </div>
             )}
 
-            <div className="bg-slate-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 text-center sm:text-left">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#EAB308]">
-                  Independent Evaluation
-                </span>
-                <h4 className="text-base font-bold text-white">Bargorya Lab Score & Verdict</h4>
-                <p className="text-xs text-slate-400">
-                  Based on durability benchmarks, pricing accuracy, and hands-on testing.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl">
-                <Star size={20} className="fill-amber-400 text-amber-400" />
-                <span className="text-2xl font-black text-white">{form.rating}</span>
-                <span className="text-xs text-slate-400">/ 5.0</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#E7E7E5] rounded-2xl p-6 sm:p-10 shadow-2xs space-y-6">
-              {tocItems.length > 0 && (
-                <nav
-                  aria-label="Mục lục bài viết"
-                  className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50 via-white to-slate-50/60 p-5 sm:p-6 shadow-2xs space-y-4"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between pb-3.5 border-b border-slate-200/70">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-[#C62828] flex items-center justify-center shrink-0 shadow-2xs">
-                        <ListTree size={16} />
-                      </div>
-                      <div>
-                        <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                          Mục Lục Bài Viết
-                          <span className="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full normal-case">
-                            {tocItems.length} đề mục
-                          </span>
-                        </h2>
-                        <p className="text-[11px] text-slate-400">Chọn đề mục để chuyển nhanh đến nội dung bài đánh giá</p>
-                      </div>
-                    </div>
-
-                    <div className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                      <span>Click để cuộn nhanh</span>
-                      <ChevronRight size={13} />
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="lg:col-span-8 space-y-6">
+                <div className="bg-slate-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1 text-center sm:text-left">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#EAB308]">
+                      Independent Evaluation
+                    </span>
+                    <h4 className="text-base font-bold text-white">HeyGoodly Lab Score & Verdict</h4>
+                    <p className="text-xs text-slate-400">
+                      Based on durability benchmarks, pricing accuracy, and hands-on testing.
+                    </p>
                   </div>
 
-                  {/* 1 Item Per Row (Mỗi cái 1 hàng) Vertical Directory */}
-                  <div className="flex flex-col space-y-2">
-                    {tocItems.map((item, idx) => {
-                      const isH2 = item.level === 'h2';
-                      const numMatch = item.label.match(/^(\d+)[\.\s]/);
-                      const sectionNum = numMatch
-                        ? numMatch[1].padStart(2, '0')
-                        : (idx + 1).toString().padStart(2, '0');
-                      const displayLabel = numMatch
-                        ? item.label.replace(/^\d+[\.\s]+/, '')
-                        : item.label;
+                  <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl">
+                    <Star size={20} className="fill-amber-400 text-amber-400" />
+                    <span className="text-2xl font-black text-white">{form.rating}</span>
+                    <span className="text-xs text-slate-400">/ 5.0</span>
+                  </div>
+                </div>
 
-                      if (isH2) {
-                        return (
-                          <a
+                <div className="bg-white border border-[#E7E7E5] rounded-2xl p-6 sm:p-10 shadow-2xs space-y-6">
+                  <div className="w-full">
+                    <div
+                      className="prose prose-slate max-w-none text-slate-800 leading-relaxed font-sans prose-headings:font-bold prose-h2:text-2xl prose-h2:font-editorial prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-xl prose-h3:mt-5 prose-h3:mb-2 prose-p:my-3 prose-p:leading-relaxed prose-a:text-[#C62828] prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-[#C62828] prose-blockquote:italic prose-blockquote:pl-4 prose-blockquote:my-4 prose-img:rounded-xl prose-ul:list-disc prose-ol:list-decimal"
+                      dangerouslySetInnerHTML={{ __html: form.content }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Sidebar in Live Preview */}
+              <aside className="lg:col-span-4 space-y-5">
+                {form.showBrandCard && (
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xs overflow-hidden border border-slate-200">
+                      {selectedStore?.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={selectedStore.logoUrl}
+                          alt={previewStoreName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{previewStoreName.substring(0, 2).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-red-700 bg-red-50 border border-red-100 px-2.5 py-0.5 rounded-full tracking-widest">
+                        <Sparkles size={11} /> Brand Deals • Up to {previewStoreDiscount}
+                      </span>
+                      <h4 className="font-black text-lg text-slate-900">{previewStoreName}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        {form.brandDescription.trim() ||
+                          selectedStore?.shortDescription ||
+                          `Updated daily with hand-tested promo codes and direct manufacturer discounts for ${previewStoreName}.`}
+                      </p>
+                    </div>
+                    <div className="w-full py-3 bg-red-700 text-white font-black text-xs rounded-xl shadow-xs">
+                      {form.ctaText.trim() || `Get Promo Code (${selectedStore?.activeCoupons || 6} Active) →`}
+                    </div>
+                  </div>
+                )}
+
+                {form.showGuaranteeCard && (
+                  <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xs space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                      <ShieldCheck size={16} />
+                      <span>{form.guaranteeTitle || 'HeyGoodly Testing Guarantee'}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{form.guaranteeText}</p>
+                    <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-1.5">
+                      {form.tags
+                        .split(',')
+                        .filter((t) => t.trim())
+                        .map((tag, idx) => (
+                          <span
                             key={idx}
-                            href={`#${item.id}`}
-                            className="group flex items-center justify-between p-3 sm:px-4 sm:py-3 rounded-xl bg-white hover:bg-rose-50/70 border border-slate-200/90 hover:border-rose-300 shadow-2xs transition-all cursor-pointer"
+                            className="text-[11px] font-medium bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg"
                           >
-                            <div className="flex items-center gap-3 min-w-0 pr-2">
-                              <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-mono text-xs font-black flex items-center justify-center shrink-0 border border-slate-200/80 group-hover:bg-[#C62828] group-hover:text-white group-hover:border-[#C62828] transition-colors shadow-2xs">
-                                {sectionNum}
-                              </span>
-                              <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#C62828] transition-colors truncate">
-                                {displayLabel}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 group-hover:bg-rose-100 group-hover:text-[#C62828] transition-colors">
-                                Phần {sectionNum}
-                              </span>
-                              <ChevronRight
-                                size={14}
-                                className="text-slate-300 group-hover:text-[#C62828] group-hover:translate-x-1 transition-all"
-                              />
-                            </div>
-                          </a>
-                        );
-                      }
-
-                      // Sub-item (H3/H4) with clean indent
-                      return (
-                        <a
-                          key={idx}
-                          href={`#${item.id}`}
-                          className="group flex items-center justify-between p-2 sm:px-4 rounded-xl ml-4 sm:ml-8 bg-slate-50/60 hover:bg-slate-100/90 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 group-hover:bg-[#C62828] shrink-0 transition-colors" />
-                            <span className="text-xs font-medium text-slate-600 group-hover:text-slate-900 transition-colors truncate">
-                              {item.label}
-                            </span>
-                          </div>
-
-                          <ChevronRight
-                            size={12}
-                            className="text-slate-300 group-hover:text-slate-600 transition shrink-0"
-                          />
-                        </a>
-                      );
-                    })}
+                            #{tag.trim()}
+                          </span>
+                        ))}
+                    </div>
                   </div>
-                </nav>
-              )}
-
-              <div className="w-full">
-                <div
-                  className="prose prose-slate max-w-none text-slate-800 leading-relaxed font-sans prose-headings:font-bold prose-h2:text-2xl prose-h2:font-editorial prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-xl prose-h3:mt-5 prose-h3:mb-2 prose-p:my-3 prose-p:leading-relaxed prose-a:text-[#C62828] prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-[#C62828] prose-blockquote:italic prose-blockquote:pl-4 prose-blockquote:my-4 prose-img:rounded-xl prose-ul:list-disc prose-ol:list-decimal"
-                  dangerouslySetInnerHTML={{ __html: form.content }}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <span className="text-xs font-bold text-slate-500">Related Tags:</span>
-              {form.tags.split(',').map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="bg-white border border-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg"
-                >
-                  #{tag.trim()}
-                </span>
-              ))}
+                )}
+              </aside>
             </div>
           </div>
         </div>

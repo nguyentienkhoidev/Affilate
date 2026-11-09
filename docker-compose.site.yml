@@ -1,0 +1,153 @@
+# =============================================================================
+# Multi-Site Duplicate Stack (Uses Shared MinIO — ZERO YAML edits needed!)
+# Just copy repo to /opt/web1, /opt/web2, ... edit ONLY .env (APP_SLUG, ports,
+# domain) and run:
+#   docker compose -f docker-compose.site.yml up -d --build
+# =============================================================================
+name: ${APP_SLUG:-web1}
+
+services:
+  # ===========================================================================
+  # 1. Isolated PostgreSQL 16 (Internal network only — zero port collision)
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${APP_SLUG:-web1}-postgres
+    restart: unless-stopped
+    command: postgres -c shared_buffers=128MB -c max_connections=60
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-${APP_SLUG:-web1}_db}
+      POSTGRES_USER: ${POSTGRES_USER:-${APP_SLUG:-web1}_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-heygoodly_secret_password_2026}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - site-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-${APP_SLUG:-web1}_user} -d ${POSTGRES_DB:-${APP_SLUG:-web1}_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 2. Isolated Redis 7 (Internal network only — zero port collision)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ${APP_SLUG:-web1}-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-heygoodly_redis_pass_2026}
+    volumes:
+      - redis_data:/data
+    networks:
+      - site-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-heygoodly_redis_pass_2026}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 3. Spring Boot 3 Backend (Auto-creates ${APP_SLUG}-media bucket on Shared MinIO)
+  # ===========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${APP_SLUG:-web1}-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms256m -Xmx640m -XX:+UseG1GC}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_HOST: ${APP_SLUG:-web1}-postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-${APP_SLUG:-web1}_db}
+      DB_USER: ${POSTGRES_USER:-${APP_SLUG:-web1}_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-heygoodly_secret_password_2026}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-15}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-5}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      REDIS_HOST: ${APP_SLUG:-web1}-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-heygoodly_redis_pass_2026}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://shared-minio:9000}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-heygoodly_minio_admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-heygoodly_minio_pass_2026}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-${APP_SLUG:-web1}-media}
+      JWT_SECRET: ${JWT_SECRET:-c2VjdXJlX2hleWdvb2RseV9hZmZpbGlhdGVfcG9ydGFsX2p3dF9zZWNyZXRfa2V5XzIwMjY=}
+      JWT_ACCESS_TOKEN_EXPIRATION_MS: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:-86400000}
+      JWT_REFRESH_TOKEN_EXPIRATION_MS: ${JWT_REFRESH_TOKEN_EXPIRATION_MS:-604800000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      TWO_FACTOR_ISSUER: ${TWO_FACTOR_ISSUER:-${APP_SLUG:-HeyGoodly}ProCMS}
+      AFFILIATE_DEFAULT_FALLBACK_URL: ${AFFILIATE_DEFAULT_FALLBACK_URL:-${NEXT_PUBLIC_SITE_URL:-https://heygoodly.com}}
+      LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${BACKEND_PORT:-8081}:8080"
+    networks:
+      - site-internal
+      - shared-gateway-net
+      - shared-minio-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  # ===========================================================================
+  # 4. Next.js 16 Frontend
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
+    container_name: ${APP_SLUG:-web1}-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
+      BACKEND_INTERNAL_URL: http://${APP_SLUG:-web1}-backend:8080
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${FRONTEND_PORT:-3001}:3000"
+    networks:
+      - site-internal
+      - shared-gateway-net
+
+volumes:
+  postgres_data:
+    name: ${APP_SLUG:-web1}_postgres_data
+  redis_data:
+    name: ${APP_SLUG:-web1}_redis_data
+
+networks:
+  site-internal:
+    name: ${APP_SLUG:-web1}-internal-net
+    driver: bridge
+  shared-gateway-net:
+    external: true
+    name: shared-gateway-net
+  shared-minio-net:
+    external: true
+    name: shared-minio-net
+

@@ -5,3 +5,43 @@ databaseChangeLog:
       file: db/changelog/changes/002-seed-permissions-and-roles.sql
   - include:
       file: db/changelog/changes/003-seed-demo-data.sql
+  - include:
+      file: db/changelog/changes/004-create-i18n-messages-table.sql
+  - include:
+      file: db/changelog/changes/005-seed-comprehensive-portal-data.sql
+  - include:
+      file: db/changelog/changes/006-seed-complete-10-stores-37-offers-14-articles.sql
+  - include:
+      file: db/changelog/changes/007-add-notification-preferences-to-users.sql
+  - include:
+      file: db/changelog/changes/008-seed-media-items.sql
+  - include:
+      file: db/changelog/changes/009-seed-token-error-messages.sql
+  - include:
+      file: db/changelog/changes/010-seed-token-revoked-message.sql
+  - include:
+      file: db/changelog/changes/011-add-is-featured-and-json-metadata-to-stores.sql
+  - include:
+      file: db/changelog/changes/012-seed-affiliate-clicks-telemetry.sql
+  - include:
+      file: db/changelog/changes/013-update-audit-logs-ip-device.sql
+  - include:
+      file: db/changelog/changes/014-assign-categories-to-posts.sql
+  - include:
+      file: db/changelog/changes/015-add-image-to-offers.sql
+  - include:
+      file: db/changelog/changes/016-seed-comprehensive-system-settings.sql
+  - include:
+      file: db/changelog/changes/017-link-posts-to-stores-and-editorial-page.sql
+  - include:
+      file: db/changelog/changes/018-create-tags-table.sql
+  - include:
+      file: db/changelog/changes/019-sync-all-existing-tags.sql
+  - include:
+      file: db/changelog/changes/020-centralize-tags-for-all-entities.sql
+  - include:
+      file: db/changelog/changes/021-seed-database-validation-and-error-i18n-messages.sql
+  - include:
+      file: db/changelog/changes/022-seed-menu-and-user-validation-i18n.sql
+  - include:
+      file: db/changelog/changes/023-fix-post-category-and-tag-mappings.sql

@@ -1,0 +1,121 @@
+name: HeyGoodly Docker Release & Production CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      deploy_to_vps:
+        description: "Deploy automatically to production VPS over SSH"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ===========================================================================
+  # 1. Build & Push Production Docker Images to GitHub Container Registry (GHCR)
+  # ===========================================================================
+  build-and-push:
+    name: Build & Push Docker Images (GHCR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize Repository Image Prefix
+        id: repo
+        run: |
+          echo "owner_repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Build and Push Spring Boot Backend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_repo }}-backend:latest
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_repo }}-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and Push Next.js Frontend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_repo }}-frontend:latest
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_repo }}-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  # ===========================================================================
+  # 2. Automated Production VPS Deployment over SSH
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production VPS via Docker Compose
+    needs: build-and-push
+    if: ${{ (github.event_name == 'push' || inputs.deploy_to_vps == true) && secrets.VPS_HOST != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Stack over SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            DEPLOY_PATH="${{ secrets.VPS_DEPLOY_PATH || '/opt/web1' }}"
+            echo "==> Deploying to $DEPLOY_PATH..."
+            cd "$DEPLOY_PATH"
+            git pull origin main
+
+            # 1. Ensure Shared Docker Networks exist
+            docker network inspect shared-minio-net >/dev/null 2>&1 || docker network create shared-minio-net
+            docker network inspect shared-gateway-net >/dev/null 2>&1 || docker network create shared-gateway-net
+
+            # 2. Ensure Shared MinIO & Nginx are running
+            if [ -f docker-compose.minio.yml ] && ! docker ps --format '{{.Names}}' | grep -qx 'shared-minio'; then
+              echo "==> Starting shared MinIO..."
+              docker compose -f docker-compose.minio.yml up -d
+            fi
+            if [ -f docker-compose.nginx.yml ] && ! docker ps --format '{{.Names}}' | grep -qx 'shared-nginx'; then
+              echo "==> Starting shared Nginx Gateway..."
+              docker compose -f docker-compose.nginx.yml up -d
+            fi
+
+            # 3. Build & Launch Web 1 Stack
+            echo "==> Starting site stack..."
+            docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.site.yml' }} up -d --build --remove-orphans
+
+            # 4. Cleanup old dangling images to save disk space
+            docker image prune -f
+            echo "==> Deployment finished successfully!"
+
+

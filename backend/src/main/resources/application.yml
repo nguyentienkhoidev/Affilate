@@ -1,32 +1,101 @@
 spring:
   application:
-    name: bargorya-portal-backend
+    name: heygoodly-portal-backend
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   threads:
     virtual:
       enabled: true
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 20MB
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:20MB}
 
+  # ===========================================================================
+  # PostgreSQL Datasource Configuration
+  # ===========================================================================
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:heygoodly_db}
+    username: ${DB_USER:heygoodly_user}
+    password: ${DB_PASSWORD:heygoodly_secret_password_2026}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:300000}
+      connection-timeout: ${DB_POOL_CONN_TIMEOUT:20000}
+
+  # ===========================================================================
+  # JPA & Hibernate Configuration
+  # ===========================================================================
+  jpa:
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${JPA_FORMAT_SQL:false}
+        jdbc:
+          time_zone: UTC
+
+  # ===========================================================================
+  # Liquibase Database Migration Configuration
+  # ===========================================================================
+  liquibase:
+    enabled: ${LIQUIBASE_ENABLED:true}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    drop-first: ${LIQUIBASE_DROP_FIRST:false}
+
+  # ===========================================================================
+  # Redis Cache & Fast Redirects Configuration
+  # ===========================================================================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:heygoodly_redis_pass_2026}
+      timeout: ${REDIS_TIMEOUT_MS:5000}ms
+      repositories:
+        enabled: false
+
+# ===========================================================================
+# Server Configuration
+# ===========================================================================
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
 
+# ===========================================================================
+# Application Custom Properties (Injectable via .env)
+# ===========================================================================
 app:
   jwt:
-    secret: ${JWT_SECRET:c2VjdXJlX2JhcmdvcnlhX2FmZmlsaWF0ZV9wb3J0YWxfand0X3NlY3JldF9rZXlfMjAyNg==}
-    access-token-expiration-ms: 86400000 # 24 hours
-    refresh-token-expiration-ms: 604800000 # 7 days
+    secret: ${JWT_SECRET:c2VjdXJlX2hleWdvb2RseV9hZmZpbGlhdGVfcG9ydGFsX2p3dF9zZWNyZXRfa2V5XzIwMjY=}
+    access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:86400000} # 24 hours
+    refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000} # 7 days
   storage:
-    local-path: ${STORAGE_LOCAL_PATH:/var/www/bargorya/uploads}
-    max-file-size-bytes: 10485760 # 10MB
-    allowed-image-extensions: jpg,jpeg,png,webp
+    local-path: ${STORAGE_LOCAL_PATH:uploads}
+    max-file-size-bytes: ${STORAGE_MAX_FILE_SIZE_BYTES:10485760} # 10MB
+    allowed-image-extensions: ${STORAGE_ALLOWED_EXTENSIONS:jpg,jpeg,png,webp}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:heygoodly_minio_admin}
+    secret-key: ${MINIO_SECRET_KEY:heygoodly_minio_pass_2026}
+    bucket-name: ${MINIO_BUCKET_NAME:heygoodly-media}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
   two-factor:
-    issuer: BargoryaProCMS
+    issuer: ${TWO_FACTOR_ISSUER:HeyGoodlyProCMS}
+  affiliate:
+    default-fallback-url: ${AFFILIATE_DEFAULT_FALLBACK_URL:https://heygoodly.com}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.heygoodly.portal: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}

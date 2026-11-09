@@ -24,7 +24,7 @@ Controller (REST API) ➔ Service (Interface & Impl) ➔ Repository (JPA/Specifi
 ```
 
 ```
-backend/src/main/java/com/bargorya/portal/
+backend/src/main/java/com/heygoodly/portal/
 ├── common/                     # Thư viện dùng chung, Base Entity, Constants, Utils
 │   ├── constant/               # SecurityConstants, PermissionConstants, AppConstants, ErrorCodes
 │   ├── dto/                    # ApiResponse<T>, PageResponse<T>, ErrorResponse
@@ -191,7 +191,7 @@ public record ApiResponse<T>(
 
 ### 1. Phân Chia Hằng Số Backend (`common/constant/`)
 ```
-backend/src/main/java/com/bargorya/portal/common/constant/
+backend/src/main/java/com/heygoodly/portal/common/constant/
 ├── AppConstants.java           # Tên app, múi giờ mặc định, định dạng ngày tháng
 ├── SecurityConstants.java      # Token header, Token prefix, Secret expirations
 ├── PermissionConstants.java    # Quyền RBAC (STORE_VIEW, STORE_CREATE, POST_EDIT...)

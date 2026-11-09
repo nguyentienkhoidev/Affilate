@@ -18,14 +18,30 @@ const STORAGE_PREFIX = 'admin:collection:';
 const cache = new Map<string, unknown[]>();
 const listeners = new Map<string, Set<Listener>>();
 
-function readCollection<T>(key: string, seed: T[]): T[] {
+function readCollection<T extends { id?: Id }>(key: string, seed: T[]): T[] {
   if (!cache.has(key)) {
     let data: T[] = seed;
     try {
       const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-      if (raw) data = JSON.parse(raw) as T[];
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<T & { id?: Id | null }>;
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((item) => item && item.id != null)) {
+          const existingIds = new Set(parsed.map((p) => String(p.id)));
+          const missingSeedItems = seed.filter((s) => s.id != null && !existingIds.has(String(s.id)));
+          data = missingSeedItems.length > 0 ? [...(parsed as T[]), ...missingSeedItems] : (parsed as T[]);
+        }
+      }
     } catch {
       data = seed;
+    }
+    if (Array.isArray(data)) {
+      data = data.map((item: any) => {
+        if (item && typeof item === 'object' && 'network' in item) {
+          const { network: _omitted, ...rest } = item;
+          return rest as T;
+        }
+        return item;
+      });
     }
     cache.set(key, data);
   }

@@ -1,26 +1,12 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bargorya_db}
-    username: ${DB_USER:bargorya_user}
-    password: ${DB_PASSWORD:bargorya_password}
-    driver-class-name: org.postgresql.Driver
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
+    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
-        format_sql: false
-        jdbc:
-          time_zone: UTC
-  liquibase:
-    enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-    drop-first: false
+        format_sql: ${JPA_FORMAT_SQL:true}
 
 logging:
   level:
     root: INFO
-    com.bargorya.portal: DEBUG
+    com.heygoodly.portal: DEBUG
     org.springframework.security: INFO

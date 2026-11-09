@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
@@ -17,10 +17,9 @@ import {
 import { Card, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { ROUTES } from '@/constants/routes';
 import {
-  ROLES_STORE_KEY,
-  DEFAULT_ROLES,
   PERMISSION_CATALOG,
   CORE_PERMISSION_CODES,
   isCorePermission,
@@ -28,38 +27,68 @@ import {
   type PermissionGroup,
 } from './_lib/data';
 import { usePermission } from '@/lib/admin/usePermission';
-import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { useToast } from '@/context/ToastContext';
 import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
+import { apiClient } from '@/lib/api/axios-client';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
 export default function AdminRolesPage() {
   const { hasPermission } = usePermission();
-  const { items: roles, setItems, remove } = useAdminCollection<RoleItem>(ROLES_STORE_KEY, DEFAULT_ROLES);
+  const { toast, confirm: confirmModal } = useToast();
 
-  if (!hasPermission('role.view')) {
-    return <UnauthorizedAccess requiredPermission="role.view" moduleName="Roles & RBAC Permission Matrix" />;
-  }
+  const [apiRoles, setApiRoles] = useState<RoleItem[]>([]);
 
-  const [selectedRole, setSelectedRole] = useState<RoleItem>(roles[1] ?? roles[0]);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(() => {
-    const initial = roles[1]?.permissions ?? roles[0]?.permissions ?? [];
-    return initial.includes('ALL') ? initial : Array.from(new Set([...initial, ...CORE_PERMISSION_CODES]));
-  });
+  useEffect(() => {
+    let mounted = true;
+    apiClient.get(API_ENDPOINTS.ADMIN.ROLES, { params: { size: 50 } })
+      .then((res) => {
+        const pageData = res.data?.data;
+        const list = pageData?.content || pageData?.items || (Array.isArray(pageData) ? pageData : null);
+        if (mounted && list && Array.isArray(list) && list.length > 0) {
+          const mapped: RoleItem[] = list.map((r: any) => ({
+            id: Number(r.id),
+            name: r.name,
+            slug: r.slug,
+            description: r.description || '',
+            isSystem: Boolean(r.isSystem),
+            usersCount: Number(r.userCount || r.usersCount || 0),
+            permissions: Array.isArray(r.permissions) ? r.permissions : [],
+          }));
+          setApiRoles(mapped);
+          if (mapped.length > 0) {
+            setSelectedRole(mapped[1] ?? mapped[0]);
+            const initPerms = mapped[1]?.permissions ?? mapped[0]?.permissions ?? [];
+            setSelectedPermissions(initPerms.includes('ALL') ? initPerms : Array.from(new Set([...initPerms, ...CORE_PERMISSION_CODES])));
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const activeRolesList = apiRoles;
+
+  const [selectedRole, setSelectedRole] = useState<RoleItem | null>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [roleSearch, setRoleSearch] = useState('');
   const [permissionSearch, setPermissionSearch] = useState('');
   const [moduleFilter, setModuleFilter] = useState('all');
 
-  const activeRole = roles.find((r) => r.id === selectedRole?.id) ?? roles[0];
+  const activeRole = (selectedRole ? activeRolesList.find((r) => r.id === selectedRole.id) : null) ?? activeRolesList[0];
+  const isSuperAdminRole = activeRole?.slug === 'admin' || (Boolean(activeRole?.isSystem) && activeRole?.name?.toLowerCase().includes('administrator'));
 
   const handleSelectRole = (role: RoleItem) => {
     setSelectedRole(role);
-    const perms = role.permissions.includes('ALL')
+    const perms = role.permissions.includes('ALL') || role.slug === 'admin'
       ? role.permissions
       : Array.from(new Set([...role.permissions, ...CORE_PERMISSION_CODES]));
     setSelectedPermissions(perms);
   };
 
   const togglePermission = (code: string) => {
-    if (activeRole.isSystem) return; // Super Administrator is fully locked
+    if (!activeRole || isSuperAdminRole) return; // Only Super Administrator is locked
     if (isCorePermission(code)) return; // Core permissions are permanently granted & locked
     setSelectedPermissions((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -67,7 +96,7 @@ export default function AdminRolesPage() {
   };
 
   const toggleModuleAll = (group: PermissionGroup) => {
-    if (activeRole.isSystem || group.isCore) return;
+    if (!activeRole || isSuperAdminRole || group.isCore) return;
     const groupCodes = group.permissions.filter((p) => !p.isLocked && !isCorePermission(p.code)).map((p) => p.code);
     const hasAll = groupCodes.every((c) => selectedPermissions.includes(c));
 
@@ -78,29 +107,65 @@ export default function AdminRolesPage() {
     }
   };
 
-  const handleDeleteRole = (id: number) => {
-    if (confirm('Delete this operational role? Staff members assigned to it will revert to basic viewer.')) {
-      remove(id);
-      setSelectedRole(roles[0]);
-      setSelectedPermissions(roles[0].permissions);
+  const handleDeleteRole = async (id: number) => {
+    const roleItem = activeRolesList.find((r) => r.id === id);
+    if (roleItem?.isSystem || roleItem?.slug === 'admin' || roleItem?.slug === 'staff') {
+      toast.error('System roles cannot be deleted.');
+      return;
+    }
+    const confirmed = await confirmModal({
+      title: 'Delete Operational Role',
+      message: (
+        <span>
+          Are you sure you want to delete role{' '}
+          <strong className="text-rose-600 font-bold">{roleItem?.name || 'this role'}</strong>?
+          Staff members assigned to it will revert to basic viewer.
+        </span>
+      ),
+      confirmText: 'Delete Role',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (confirmed) {
+      try {
+        await apiClient.delete(`${API_ENDPOINTS.ADMIN.ROLES}/${id}`);
+        setApiRoles((prev) => prev.filter((r) => r.id !== id));
+        if (activeRolesList.length > 1) {
+          const remaining = activeRolesList.filter((r) => r.id !== id);
+          setSelectedRole(remaining[0]);
+          setSelectedPermissions(remaining[0].permissions);
+        }
+        toast.success('Role deleted successfully');
+      } catch {
+        toast.error('Failed to delete role');
+      }
     }
   };
 
-  const handleSaveMatrix = () => {
-    const finalPermissions = activeRole.isSystem
-      ? ['ALL']
-      : Array.from(new Set([...selectedPermissions, ...CORE_PERMISSION_CODES]));
-    setItems((prev) =>
-      prev.map((r) =>
-        r.id === activeRole.id ? { ...r, permissions: finalPermissions } : r
-      )
-    );
-    setSelectedPermissions(finalPermissions);
-    alert(`Đã lưu phân quyền thành công cho vai trò: ${activeRole.name}`);
+  const handleSaveMatrix = async () => {
+    if (!activeRole || isSuperAdminRole) return;
+    const finalPermissions = Array.from(new Set([...selectedPermissions, ...CORE_PERMISSION_CODES]));
+    try {
+      await apiClient.put(`${API_ENDPOINTS.ADMIN.ROLES}/${activeRole.id}`, {
+        name: activeRole.name,
+        slug: activeRole.slug,
+        description: activeRole.description,
+        permissions: finalPermissions,
+      });
+      setApiRoles((prev) =>
+        prev.map((r) =>
+          r.id === activeRole.id ? { ...r, permissions: finalPermissions } : r
+        )
+      );
+      setSelectedPermissions(finalPermissions);
+      toast.success(`Permissions saved successfully for role: ${activeRole.name}`);
+    } catch {
+      toast.error('Failed to save permissions');
+    }
   };
 
   // Filter Roles
-  const filteredRoles = roles.filter(
+  const filteredRoles = activeRolesList.filter(
     (r) =>
       r.name.toLowerCase().includes(roleSearch.toLowerCase()) ||
       r.description.toLowerCase().includes(roleSearch.toLowerCase())
@@ -133,25 +198,26 @@ export default function AdminRolesPage() {
     return { ...group, permissions: matchedPerms };
   }).filter((group) => group.permissions.length > 0);
 
+  if (!hasPermission('role.view')) {
+    return <UnauthorizedAccess requiredPermission="role.view" moduleName="Roles & RBAC Permission Matrix" />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 pb-5">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
-            Role-Based Access Control (Dynamic RBAC)
-          </h1>
-          <p className="text-xs text-zinc-500 mt-1">
-            Thiết lập quyền hạn vận hành cho từng vai trò nhân sự. Các quyền cơ bản của hệ thống được cấp mặc định và cố định cho mọi vai trò.
-          </p>
-        </div>
-
-        <Link href={ROUTES.ADMIN.ROLE_CREATE}>
-          <Button size="sm">
-            <Plus size={14} /> Create Custom Role
-          </Button>
+      <AdminPageHeader
+        icon={ShieldCheck}
+        title="Role-Based Access Control (Dynamic RBAC)"
+        badge={`${activeRolesList.length} Roles Configured`}
+        description="Configure operational privileges for each staff role. Core system permissions are granted by default and locked across all roles."
+      >
+        <Link
+          href={ROUTES.ADMIN.ROLE_CREATE}
+          className="h-9 px-4 inline-flex items-center justify-center gap-2 bg-[#C62828] hover:bg-[#B71C1C] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
+        >
+          <Plus size={15} /> Create Custom Role
         </Link>
-      </div>
+      </AdminPageHeader>
 
       {/* Main 2-Column RBAC Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -160,9 +226,9 @@ export default function AdminRolesPage() {
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
             <div>
               <CardTitle className="text-sm">Configured Roles</CardTitle>
-              <CardDescription className="text-xs">Chọn vai trò để quản lý phân quyền</CardDescription>
+              <CardDescription className="text-xs">Select a role to manage its permissions</CardDescription>
             </div>
-            <Badge variant="outline">{roles.length} Roles</Badge>
+            <Badge variant="outline">{activeRolesList.length} Roles</Badge>
           </div>
 
           {/* Role search */}
@@ -200,12 +266,13 @@ export default function AdminRolesPage() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {role.isSystem ? (
+                      {role.isSystem || role.slug === 'admin' || role.slug === 'staff' ? (
                         <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
                           <Lock size={10} /> System
                         </span>
                       ) : (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteRole(role.id);
@@ -225,10 +292,10 @@ export default function AdminRolesPage() {
 
                   <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-zinc-100 text-[11px] text-zinc-400">
                     <span className="flex items-center gap-1">
-                      <Users size={12} /> {role.usersCount} Nhân sự
+                      <Users size={12} /> {role.usersCount} Staff
                     </span>
                     <span className="font-mono text-zinc-500 text-[10px]">
-                      {role.permissions.includes('ALL') ? 'Toàn quyền (All 45+)' : `${role.permissions.length} actions`}
+                      {role.permissions.includes('ALL') || role.slug === 'admin' ? 'Full Access (All 47)' : `${role.permissions.length} actions`}
                     </span>
                   </div>
                 </div>
@@ -243,8 +310,10 @@ export default function AdminRolesPage() {
             <div>
               <div className="flex items-center gap-2">
                 <CardTitle>{activeRole?.name} Matrix</CardTitle>
-                {activeRole?.isSystem && (
-                  <Badge variant="indigo">Full Superuser Authorization</Badge>
+                {isSuperAdminRole ? (
+                  <Badge variant="indigo">Full Superuser Authorization (Immutable)</Badge>
+                ) : (
+                  <Badge variant="outline">Configurable Operational Role</Badge>
                 )}
               </div>
               <CardDescription className="text-xs mt-0.5">
@@ -252,9 +321,9 @@ export default function AdminRolesPage() {
               </CardDescription>
             </div>
 
-            {!activeRole?.isSystem && (
+            {!isSuperAdminRole && (
               <Button onClick={handleSaveMatrix} size="sm">
-                <Check size={14} /> Lưu Phân Quyền
+                <Check size={14} /> Save Permissions
               </Button>
             )}
           </div>
@@ -297,7 +366,7 @@ export default function AdminRolesPage() {
               </div>
             ) : (
               filteredModules.map((group, gIdx) => {
-                const isSuper = activeRole?.isSystem;
+                const isSuper = isSuperAdminRole;
                 const groupCodes = group.permissions.map((p) => p.code);
                 const hasAll = isSuper || group.isCore || groupCodes.every((c) => selectedPermissions.includes(c));
 
@@ -322,13 +391,14 @@ export default function AdminRolesPage() {
                         </span>
                         {group.isCore && (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300/80 px-2 py-0.5 rounded-full">
-                            Mặc định • Cố định mọi Role
+                            Default • Locked for All Roles
                           </span>
                         )}
                       </div>
 
                       {!isSuper && !group.isCore ? (
                         <button
+                          type="button"
                           onClick={() => toggleModuleAll(group)}
                           className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
                         >
@@ -336,7 +406,7 @@ export default function AdminRolesPage() {
                         </button>
                       ) : group.isCore ? (
                         <span className="text-[11px] text-emerald-700 font-medium hidden sm:inline">
-                          Luôn cấp sẵn (Không thể tắt)
+                          Always Granted (Cannot Disable)
                         </span>
                       ) : null}
                     </div>
@@ -350,7 +420,7 @@ export default function AdminRolesPage() {
                         return (
                           <div
                             key={perm.code}
-                            onClick={() => !isCore && togglePermission(perm.code)}
+                            onClick={() => !isCore && !isSuper && togglePermission(perm.code)}
                             className={`p-3 rounded-xl border text-xs flex items-start gap-3 transition-colors ${
                               isCore
                                 ? 'bg-emerald-50/40 border-emerald-200/80 cursor-not-allowed select-none'
@@ -362,7 +432,7 @@ export default function AdminRolesPage() {
                             }`}
                             title={
                               isCore
-                                ? 'Quyền cơ bản mặc định của hệ thống — Mọi vai trò đều bắt buộc phải có, không thể chỉnh sửa.'
+                                ? 'Mandatory core system permission — required for all roles and cannot be modified.'
                                 : undefined
                             }
                           >
@@ -383,7 +453,7 @@ export default function AdminRolesPage() {
                                 <p className="font-semibold text-zinc-900">{perm.label}</p>
                                 {isCore && (
                                   <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300/80 px-1.5 py-0.5 rounded shrink-0">
-                                    <Lock size={9} /> Bắt buộc
+                                    <Lock size={9} /> Required
                                   </span>
                                 )}
                               </div>

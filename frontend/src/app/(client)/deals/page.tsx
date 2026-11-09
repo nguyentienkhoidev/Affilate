@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 
-export default function DealsRedirectPage() {
-  redirect('/posts');
+export default function LegacyDealsRedirectPage() {
+  permanentRedirect(ROUTES.PUBLIC.POSTS);
 }

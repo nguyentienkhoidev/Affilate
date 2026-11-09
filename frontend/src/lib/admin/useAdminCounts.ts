@@ -1,17 +1,7 @@
 'use client';
 
-import { useAdminCollection } from './useAdminCollection';
-import { STORES_STORE_KEY, DEFAULT_STORES, type AdminStore } from '@/app/admin/stores/_lib/data';
-import { OFFERS_STORE_KEY, DEFAULT_OFFERS, type OfferItem } from '@/app/admin/offers/_lib/data';
-import { POSTS_STORE_KEY, DEFAULT_ARTICLES, type AdminArticle } from '@/app/admin/posts/_lib/data';
-import { CATEGORIES_STORE_KEY, DEFAULT_CATEGORIES, type CategoryData } from '@/app/admin/categories/_lib/data';
-import { MENUS_STORE_KEY, DEFAULT_MENUS, type MenuItem } from '@/app/admin/menus/_lib/data';
-import { PAGES_STORE_KEY, DEFAULT_PAGES, type StaticPageData } from '@/app/admin/pages/_lib/data';
-import { USERS_STORE_KEY, DEFAULT_USERS, type UserData } from '@/app/admin/users/_lib/data';
-import { ROLES_STORE_KEY, DEFAULT_ROLES, type RoleItem } from '@/app/admin/roles/_lib/data';
-import { FEEDBACK_STORE_KEY, DEFAULT_FEEDBACKS, type FeedbackItem } from '@/app/admin/feedback/_lib/data';
-import { MEDIA_STORE_KEY, DEFAULT_MEDIA, type MediaItem } from '@/app/admin/media/_lib/data';
-import { AUDIT_STORE_KEY, DEFAULT_AUDIT_LOGS, type AuditLogItem } from '@/app/admin/tracing/_lib/data';
+import { useState, useEffect } from 'react';
+import { dashboardService } from '@/services/dashboardService';
 
 export interface AdminCounts {
   storesCount: number;
@@ -22,39 +12,93 @@ export interface AdminCounts {
   pagesCount: number;
   feedbackCount: number;
   unreadFeedbackCount: number;
+  subscribersCount: number;
   usersCount: number;
   rolesCount: number;
   mediaCount: number;
   tracingCount: number;
 }
 
+const DEFAULT_COUNTS: AdminCounts = {
+  storesCount: 0,
+  offersCount: 0,
+  postsCount: 0,
+  categoriesCount: 0,
+  menusCount: 0,
+  pagesCount: 0,
+  feedbackCount: 0,
+  unreadFeedbackCount: 0,
+  subscribersCount: 0,
+  usersCount: 0,
+  rolesCount: 0,
+  mediaCount: 0,
+  tracingCount: 0,
+};
+
 export function useAdminCounts(): AdminCounts {
-  const { items: stores } = useAdminCollection<AdminStore>(STORES_STORE_KEY, DEFAULT_STORES);
-  const { items: offers } = useAdminCollection<OfferItem>(OFFERS_STORE_KEY, DEFAULT_OFFERS);
-  const { items: posts } = useAdminCollection<AdminArticle>(POSTS_STORE_KEY, DEFAULT_ARTICLES);
-  const { items: categories } = useAdminCollection<CategoryData>(CATEGORIES_STORE_KEY, DEFAULT_CATEGORIES);
-  const { items: menus } = useAdminCollection<MenuItem>(MENUS_STORE_KEY, DEFAULT_MENUS);
-  const { items: pages } = useAdminCollection<StaticPageData>(PAGES_STORE_KEY, DEFAULT_PAGES);
-  const { items: users } = useAdminCollection<UserData>(USERS_STORE_KEY, DEFAULT_USERS);
-  const { items: roles } = useAdminCollection<RoleItem>(ROLES_STORE_KEY, DEFAULT_ROLES);
-  const { items: feedbacks } = useAdminCollection<FeedbackItem>(FEEDBACK_STORE_KEY, DEFAULT_FEEDBACKS);
-  const { items: media } = useAdminCollection<MediaItem>(MEDIA_STORE_KEY, DEFAULT_MEDIA);
-  const { items: auditLogs } = useAdminCollection<AuditLogItem>(AUDIT_STORE_KEY, DEFAULT_AUDIT_LOGS);
+  const [counts, setCounts] = useState<AdminCounts>(() => {
+    const cached = dashboardService.getCachedStats();
+    if (!cached) return DEFAULT_COUNTS;
+    return {
+      storesCount: cached.activeStoresCount || 0,
+      offersCount: cached.activeOffersCount || 0,
+      postsCount: cached.postsCount || 0,
+      categoriesCount: cached.categoriesCount || 0,
+      menusCount: cached.menusCount || 0,
+      pagesCount: cached.pagesCount || 0,
+      feedbackCount: cached.unreadFeedbackCount || 0,
+      unreadFeedbackCount: cached.unreadFeedbackCount || 0,
+      subscribersCount: cached.subscribersCount || 0,
+      usersCount: cached.usersCount || 0,
+      rolesCount: cached.rolesCount || 0,
+      tracingCount: cached.auditLogsCount || 0,
+      mediaCount: cached.mediaCount || 0,
+    };
+  });
 
-  const unreadFeedbackCount = feedbacks.filter((f) => !f.isRead).length;
+  useEffect(() => {
+    const unsubscribe = dashboardService.subscribe((data) => {
+      setCounts({
+        storesCount: data.activeStoresCount || 0,
+        offersCount: data.activeOffersCount || 0,
+        postsCount: data.postsCount || 0,
+        categoriesCount: data.categoriesCount || 0,
+        menusCount: data.menusCount || 0,
+        pagesCount: data.pagesCount || 0,
+        feedbackCount: data.unreadFeedbackCount || 0,
+        unreadFeedbackCount: data.unreadFeedbackCount || 0,
+        subscribersCount: data.subscribersCount || 0,
+        usersCount: data.usersCount || 0,
+        rolesCount: data.rolesCount || 0,
+        tracingCount: data.auditLogsCount || 0,
+        mediaCount: data.mediaCount || 0,
+      });
+    });
 
-  return {
-    storesCount: stores.length,
-    offersCount: offers.length,
-    postsCount: posts.length,
-    categoriesCount: categories.length,
-    menusCount: menus.length,
-    pagesCount: pages.length,
-    feedbackCount: feedbacks.length,
-    unreadFeedbackCount,
-    usersCount: users.length,
-    rolesCount: roles.length,
-    mediaCount: media.length,
-    tracingCount: auditLogs.length,
-  };
+    dashboardService.getStats(true).then((data) => {
+      if (data) {
+        setCounts({
+          storesCount: data.activeStoresCount || 0,
+          offersCount: data.activeOffersCount || 0,
+          postsCount: data.postsCount || 0,
+          categoriesCount: data.categoriesCount || 0,
+          menusCount: data.menusCount || 0,
+          pagesCount: data.pagesCount || 0,
+          feedbackCount: data.unreadFeedbackCount || 0,
+          unreadFeedbackCount: data.unreadFeedbackCount || 0,
+          subscribersCount: data.subscribersCount || 0,
+          usersCount: data.usersCount || 0,
+          rolesCount: data.rolesCount || 0,
+          tracingCount: data.auditLogsCount || 0,
+          mediaCount: data.mediaCount || 0,
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  return counts;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useAdminI18n } from '@/context/AdminI18nContext';
 
 interface PaginationProps {
   currentPage: number;
@@ -25,6 +26,7 @@ export default function Pagination({
   itemName = 'items',
   showPageSizeSelector = true,
 }: PaginationProps) {
+  const { locale, t } = useAdminI18n();
   const totalPages = propTotalPages ?? Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
 
@@ -53,7 +55,13 @@ export default function Pagination({
       <div className="flex flex-wrap items-center gap-3">
         <div>
           {totalItems === 0 ? (
-            <span>No {itemName} found</span>
+            <span>{locale === 'vi' ? 'Không tìm thấy dữ liệu' : `No ${itemName} found`}</span>
+          ) : locale === 'vi' ? (
+            <span>
+              Hiển thị <strong className="text-slate-900 font-semibold">{startItem}</strong> đến{' '}
+              <strong className="text-slate-900 font-semibold">{endItem}</strong> trong tổng số{' '}
+              <strong className="text-slate-900 font-semibold">{totalItems}</strong> bản ghi
+            </span>
           ) : (
             <span>
               Showing <strong className="text-slate-900 font-semibold">{startItem}</strong> to{' '}
@@ -65,7 +73,7 @@ export default function Pagination({
 
         {showPageSizeSelector && onPageSizeChange && (
           <div className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-slate-200">
-            <span className="text-[11px] text-slate-400">Rows per page:</span>
+            <span className="text-[11px] text-slate-400">{t('Rows per page:')}</span>
             <select
               value={pageSize}
               onChange={(e) => {
@@ -77,7 +85,7 @@ export default function Pagination({
             >
               {pageSizeOptions.map((opt) => (
                 <option key={opt} value={opt}>
-                  {opt} / page
+                  {locale === 'vi' ? `${opt} / trang` : `${opt} / page`}
                 </option>
               ))}
             </select>
@@ -85,84 +93,81 @@ export default function Pagination({
         )}
       </div>
 
-      {/* Right: Page Navigation Controls */}
-      {totalPages > 1 ? (
-        <div className="flex items-center gap-1 select-none">
-          {/* First Page */}
-          <button
-            type="button"
-            onClick={() => onPageChange(1)}
-            disabled={safePage <= 1}
-            className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-            title="First Page"
-          >
-            <ChevronsLeft size={14} />
-          </button>
+      {/* Right: Page Navigation Controls - Always Visible */}
+      <div className="flex items-center gap-1 select-none">
+        {/* First Page */}
+        <button
+          type="button"
+          onClick={() => onPageChange(1)}
+          disabled={safePage <= 1}
+          className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          title={t('First Page')}
+        >
+          <ChevronsLeft size={14} />
+        </button>
 
-          {/* Previous Button */}
-          <button
-            type="button"
-            onClick={() => onPageChange(safePage - 1)}
-            disabled={safePage <= 1}
-            className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-            title="Previous Page"
-          >
-            <ChevronLeft size={14} />
-          </button>
+        {/* Previous Button */}
+        <button
+          type="button"
+          onClick={() => onPageChange(safePage - 1)}
+          disabled={safePage <= 1}
+          className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          title={t('Previous Page')}
+        >
+          <ChevronLeft size={14} />
+        </button>
 
-          {/* Page Numbers */}
-          <div className="flex items-center gap-1">
-            {pages.map((p, idx) => {
-              if (p === '...') {
-                return (
-                  <span key={`dots-${idx}`} className="px-1.5 py-1 text-slate-400 text-xs">
-                    ...
-                  </span>
-                );
-              }
-              const isCurrent = p === safePage;
+        {/* Page Numbers */}
+        <div className="flex items-center gap-1">
+          {pages.map((p, idx) => {
+            if (p === '...') {
               return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => onPageChange(p as number)}
-                  className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
-                    isCurrent
-                      ? 'bg-[#C62828] text-white shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/80'
-                  }`}
-                >
-                  {p}
-                </button>
+                <span key={`dots-${idx}`} className="px-1.5 py-1 text-slate-400 text-xs">
+                  ...
+                </span>
               );
-            })}
-          </div>
-
-          {/* Next Button */}
-          <button
-            type="button"
-            onClick={() => onPageChange(safePage + 1)}
-            disabled={safePage >= totalPages}
-            className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-            title="Next Page"
-          >
-            <ChevronRight size={14} />
-          </button>
-
-          {/* Last Page */}
-          <button
-            type="button"
-            onClick={() => onPageChange(totalPages)}
-            disabled={safePage >= totalPages}
-            className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-            title="Last Page"
-          >
-            <ChevronsRight size={14} />
-          </button>
+            }
+            const isCurrent = p === safePage;
+            return (
+              <button
+                key={p}
+                type="button"
+                disabled={totalPages <= 1}
+                onClick={() => onPageChange(p as number)}
+                className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
+                  isCurrent
+                    ? 'bg-[#C62828] text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/80'
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <span className="text-[11px] font-mono text-slate-400">Page 1 of 1</span>
-      )}
+
+        {/* Next Button */}
+        <button
+          type="button"
+          onClick={() => onPageChange(safePage + 1)}
+          disabled={safePage >= totalPages}
+          className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          title={t('Next Page')}
+        >
+          <ChevronRight size={14} />
+        </button>
+
+        {/* Last Page */}
+        <button
+          type="button"
+          onClick={() => onPageChange(totalPages)}
+          disabled={safePage >= totalPages}
+          className="w-7 h-7 inline-flex items-center justify-center shrink-0 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          title={t('Last Page')}
+        >
+          <ChevronsRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }

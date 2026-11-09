@@ -8,26 +8,27 @@ import AdminFormPage, {
   labelClass,
 } from '@/components/admin/AdminFormPage';
 import { ROUTES } from '@/constants/routes';
-import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { useToast } from '@/context/ToastContext';
+import { apiClient } from '@/lib/api/axios-client';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import {
-  ROLES_STORE_KEY,
-  DEFAULT_ROLES,
   PERMISSION_CATALOG,
   CORE_PERMISSION_CODES,
   isCorePermission,
   type RoleItem,
   type PermissionGroup,
 } from '../_lib/data';
-import { CheckSquare, Square, Lock } from 'lucide-react';
+import { CheckSquare, Square, Lock, AlertCircle } from 'lucide-react';
 
 const FORM_ID = 'role-create-form';
 
 export default function CreateRolePage() {
   const router = useRouter();
-  const { create } = useAdminCollection<RoleItem>(ROLES_STORE_KEY, DEFAULT_ROLES);
+  const { toast } = useToast();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
     ...CORE_PERMISSION_CODES,
     'store.view',
@@ -54,46 +55,59 @@ export default function CreateRolePage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    setErrors({});
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const newRole: RoleItem = {
-      id: Date.now(),
-      name,
-      slug,
-      description: description || 'Custom operational role',
-      isSystem: false,
-      usersCount: 0,
-      permissions: Array.from(new Set([...selectedPermissions, ...CORE_PERMISSION_CODES])),
-    };
+    try {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const payload = {
+        name: name.trim(),
+        slug,
+        description: description.trim() || 'Custom operational role',
+        permissions: Array.from(new Set([...selectedPermissions, ...CORE_PERMISSION_CODES])),
+      };
 
-    create(newRole);
-    router.push(ROUTES.ADMIN.ROLES);
+      await apiClient.post(API_ENDPOINTS.ADMIN.ROLES, payload);
+      toast.success(`Role "${name}" created successfully!`);
+      router.push(ROUTES.ADMIN.ROLES);
+    } catch (err: any) {
+      const respData = err?.response?.data;
+      if (respData?.errors && typeof respData.errors === 'object') {
+        setErrors(respData.errors);
+      }
+      toast.error(respData?.message || 'Failed to create role.');
+    }
   };
 
   return (
     <AdminFormPage
       title="Create Custom Operational Role"
-      description="Định nghĩa vai trò mới và cấu hình chi tiết phân quyền theo từng nghiệp vụ. Các quyền cơ bản của hệ thống được cấp mặc định và cố định."
+      description="Define a new operational role and configure granular module permissions. Core system permissions are granted by default and locked."
       backHref={ROUTES.ADMIN.ROLES}
       backLabel="Back to roles"
       formId={FORM_ID}
       submitLabel="Create Role"
       width="wide"
     >
-      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
         <FormSection title="Role Information">
           <div className="space-y-1">
             <label className={labelClass}>Role Name *</label>
             <input
-              required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+              }}
               placeholder="e.g. SEO Campaign Lead"
-              className={inputClass}
+              className={`${inputClass} ${errors.name ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
             />
+            {errors.name && (
+              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
+                <AlertCircle size={11} /> {errors.name}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -141,13 +155,13 @@ export default function CreateRolePage() {
                           <h3 className="text-xs font-bold text-slate-900">{group.module}</h3>
                           {group.isCore && (
                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300/80 px-2 py-0.5 rounded-full">
-                              Cố định • Bắt buộc mọi Role
+                              Locked • Required for All Roles
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
                           {group.isCore
-                            ? 'Quyền bắt buộc để đăng nhập và vận hành tối thiểu'
+                            ? 'Mandatory baseline permissions required to sign in and operate'
                             : `${groupSelectedCount} of ${groupCodes.length} active`}
                         </p>
                       </div>
@@ -163,7 +177,7 @@ export default function CreateRolePage() {
                       </button>
                     ) : (
                       <span className="text-[11px] text-emerald-700 font-medium hidden sm:inline">
-                        Luôn cấp sẵn
+                        Always Granted
                       </span>
                     )}
                   </div>
@@ -186,7 +200,7 @@ export default function CreateRolePage() {
                           }`}
                           title={
                             isCore
-                              ? 'Quyền cơ bản mặc định của hệ thống — Mọi vai trò đều bắt buộc phải có, không thể chỉnh sửa.'
+                              ? 'Mandatory core system permission — required for all roles and cannot be modified.'
                               : undefined
                           }
                         >
@@ -207,7 +221,7 @@ export default function CreateRolePage() {
                               <p className="text-xs font-bold text-slate-800">{perm.label}</p>
                               {isCore && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded shrink-0">
-                                  <Lock size={9} /> Bắt buộc
+                                  <Lock size={9} /> Required
                                 </span>
                               )}
                             </div>

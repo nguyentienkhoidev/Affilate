@@ -1,86 +1,148 @@
 import { apiClient } from '@/lib/api/axios-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import mockCategoriesData from '@/lib/data/mock-categories.json';
 
 export interface CategoryItem {
   id: number;
   name: string;
   slug: string;
+  type: string;
   count: number;
-  icon?: string;
-  subtitle?: string;
-  description?: string;
+  postCount: number;
+  storeCount: number;
+  image?: string;
+  icon: string;
+  subtitle: string;
+  description: string;
+  metaTitle?: string;
+  metaDescription?: string;
+}
+
+function mapBackendCategory(c: Record<string, unknown>, preferStoreCount = false): CategoryItem {
+  const postCount = Number(c.postCount ?? c.count ?? 0);
+  const storeCount = Number(c.storeCount ?? 0);
+  const name = String(c.name || '');
+
+  return {
+    id: Number(c.id),
+    name,
+    slug: String(c.slug || ''),
+    type: String(c.type || 'post'),
+    count: preferStoreCount ? storeCount : postCount,
+    postCount,
+    storeCount,
+    image: typeof c.image === 'string' && c.image.trim() ? c.image.trim() : undefined,
+    icon: String(c.icon || ''),
+    subtitle: String(c.metaTitle || `${name} Editorial`),
+    description: String(c.description || ''),
+    metaTitle: c.metaTitle ? String(c.metaTitle) : undefined,
+    metaDescription: c.metaDescription ? String(c.metaDescription) : undefined,
+  };
 }
 
 class CategoryService {
   /**
-   * Fetch all post categories list.
-   * Prioritizes backend API; automatically falls back to Mock JSON if offline.
+   * Fetch categories directly from PostgreSQL via backend API.
    */
-  async getCategories(): Promise<CategoryItem[]> {
+  async getCategories(type: 'post' | 'store' | 'all' = 'post'): Promise<CategoryItem[]> {
     try {
       const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORIES, {
-        params: { type: 'post' },
-        timeout: 2500,
+        params: { type },
+        timeout: 6000,
       });
 
-      if (res.data?.data && Array.isArray(res.data.data)) {
-        return (res.data.data as Array<Record<string, unknown>>).map((c) => ({
-          id: Number(c.id),
-          name: String(c.name || ''),
-          slug: String(c.slug || ''),
-          count: Number(c.postCount || c.count || 0),
-          icon: String(c.icon || '📰'),
-          subtitle: String(c.subtitle || `${c.name} Editorial & Insights`),
-          description: String(c.description || `Independent coverage, reviews, and test reports in ${c.name}.`),
-        }));
+      const pageData = res.data?.data;
+      const list = pageData?.content || pageData?.items || (Array.isArray(pageData) ? pageData : null);
+
+      if (list && Array.isArray(list)) {
+        return (list as Array<Record<string, unknown>>).map((c) =>
+          mapBackendCategory(c, type === 'store')
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to fetch public categories from backend:', err);
+    }
+    return [];
+  }
+
+  /**
+   * Fetch homepage highlighted categories (`showOnHome = true`).
+   */
+  async getHomeCategories(): Promise<CategoryItem[]> {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORY_HOME, { timeout: 6000 });
+      const list = res.data?.data;
+      if (Array.isArray(list) && list.length > 0) {
+        return (list as Array<Record<string, unknown>>).map((c) => mapBackendCategory(c, false));
       }
     } catch {
-      // Fallback to Mock JSON
+      // Fallback to active post categories
+    }
+    return this.getCategories('post');
+  }
+
+  /**
+   * Fetch paginated categories from backend API.
+   */
+  async getPaginatedCategories(params?: {
+    page?: number;
+    size?: number;
+    search?: string;
+    type?: 'post' | 'store' | 'all';
+  }): Promise<{ content: CategoryItem[]; totalElements: number; totalPages: number; pageNumber: number }> {
+    const page = params?.page ?? 0;
+    const size = params?.size ?? 12;
+    const type = params?.type ?? 'post';
+
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORIES, {
+        params: {
+          page,
+          size,
+          search: params?.search || undefined,
+          type,
+        },
+      });
+
+      const pageData = res.data?.data;
+      if (pageData && Array.isArray(pageData.content)) {
+        return {
+          content: pageData.content.map((c: Record<string, unknown>) =>
+            mapBackendCategory(c, type === 'store')
+          ),
+          totalElements: Number(pageData.totalElements ?? pageData.content.length),
+          totalPages: Math.max(1, Number(pageData.totalPages ?? 1)),
+          pageNumber: Number(pageData.pageNumber ?? page),
+        };
+      }
+    } catch (err) {
+      console.warn('Backend public categories API error:', err);
     }
 
-    return mockCategoriesData as CategoryItem[];
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 1,
+      pageNumber: page,
+    };
   }
 
   /**
    * Fetch category detail by slug
    */
   async getCategoryBySlug(slug: string): Promise<CategoryItem | null> {
+    if (!slug || !slug.trim()) return null;
     const normalized = slug.toLowerCase().trim();
     try {
       const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORY_DETAIL(normalized), {
-        timeout: 2000,
+        timeout: 6000,
       });
       if (res.data?.data) {
-        const c = res.data.data;
-        return {
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          count: c.postCount || c.count || 0,
-          icon: c.icon || '📰',
-          subtitle: c.subtitle || `${c.name} Editorial & Insights`,
-          description: c.description || `Independent coverage, reviews, and test reports in ${c.name}.`,
-        };
+        return mapBackendCategory(res.data.data as Record<string, unknown>, false);
       }
     } catch {
-      // fallback
+      // 404 or offline -> return null cleanly
     }
-
-    const categories = mockCategoriesData as CategoryItem[];
-    const match = categories.find(c => c.slug.toLowerCase() === normalized);
-    if (match) return match;
-
-    // Generated default metadata if new category
-    return {
-      id: 999,
-      name: slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-      slug: normalized,
-      count: 0,
-      icon: '📰',
-      subtitle: `Editorial coverage for ${slug.replace(/-/g, ' ')}`,
-      description: `Independent coverage, reviews, and consumer test reports in ${slug.replace(/-/g, ' ')}.`,
-    };
+    return null;
   }
 }
 

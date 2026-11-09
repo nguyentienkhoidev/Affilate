@@ -1,31 +1,50 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, Copy, ExternalLink, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  Check,
+  Copy,
+  ExternalLink,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { copyToClipboard } from '@/lib/utils/clipboard';
+
+export interface CouponModalOffer {
+  id: string;
+  title: string;
+  code?: string;
+  discount: string;
+  storeName: string;
+  storeSlug: string;
+  affiliateUrl?: string;
+  terms?: string;
+  imageUrl?: string;
+}
 
 export interface CouponModalProps {
   isOpen: boolean;
   onClose: () => void;
-  offer: {
-    id: string;
-    title: string;
-    code?: string;
-    discount: string;
-    storeName: string;
-    storeSlug: string;
-    affiliateUrl?: string;
-    terms?: string;
-  } | null;
+  offer: CouponModalOffer | null;
+  /** Whether the coupon was automatically copied upon opening */
+  initialCopied?: boolean;
 }
 
-export default function CouponModal({ isOpen, onClose, offer }: CouponModalProps) {
-  const [copied, setCopied] = useState(false);
+export default function CouponModal({
+  isOpen,
+  onClose,
+  offer,
+  initialCopied = true,
+}: CouponModalProps) {
+  const [copied, setCopied] = useState(initialCopied);
 
   useEffect(() => {
-    setCopied(false);
-  }, [isOpen, offer?.code]);
+    if (isOpen && offer) {
+      setCopied(initialCopied && !!offer.code);
+    }
+  }, [isOpen, offer, initialCopied]);
 
   if (!isOpen || !offer) return null;
 
@@ -37,126 +56,173 @@ export default function CouponModal({ isOpen, onClose, offer }: CouponModalProps
   };
 
   const storeInitials = offer.storeName.substring(0, 2).toUpperCase();
-  const affiliateDestination = ROUTES.PUBLIC.GO_AFFILIATE(offer.storeSlug) + `?offer=${offer.id}`;
+  const affiliateDestination =
+    offer.affiliateUrl ||
+    `${ROUTES.PUBLIC.GO_AFFILIATE(offer.storeSlug)}?offer=${offer.id}`;
 
   return (
-    <div 
+    <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn"
       role="dialog"
       aria-modal="true"
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative space-y-5 text-center transform transition-all border border-slate-100"
+        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl relative overflow-hidden border border-slate-200/90"
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition cursor-pointer"
-          aria-label="Close modal"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Store Monogram */}
-        <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white font-extrabold text-2xl flex items-center justify-center mx-auto shadow-md">
-          {storeInitials}
-        </div>
-
-        {/* Modal Header */}
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-            <ShieldCheck size={12} className="text-emerald-600" />
-            <span>Exclusive Verified Offer</span>
+        {/* TOP DARK BRAND HEADER */}
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white px-5 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl overflow-hidden bg-white/10 border border-white/15 flex items-center justify-center shrink-0 shadow-sm">
+              {offer.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={offer.imageUrl}
+                  alt={offer.storeName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="font-black text-sm text-white">{storeInitials}</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-black text-sm sm:text-base text-white truncate">
+                  {offer.storeName}
+                </h2>
+              </div>
+              <p className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
+                <Sparkles size={11} className="text-amber-400 shrink-0" />
+                <span className="truncate">
+                  {offer.code
+                    ? `Opened ${offer.storeName} in a new tab & copied code!`
+                    : `Direct offer activated at ${offer.storeName}!`}
+                </span>
+              </p>
+            </div>
           </div>
-          <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl leading-snug">
-            {offer.discount} at {offer.storeName}
-          </h3>
-          <p className="text-xs text-slate-500 line-clamp-2">
-            {offer.title}
-          </p>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+            aria-label="Close modal"
+          >
+            <X size={17} />
+          </button>
         </div>
 
-        {/* Coupon Code Section */}
-        {offer.code ? (
-          <div className="space-y-3">
-            <div className="relative p-4 bg-slate-50 border-2 border-dashed border-[#c62828] rounded-2xl flex items-center justify-between gap-3 shadow-inner">
-              <div className="text-left">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+        {/* SINGLE COUPON BODY */}
+        <div className="p-5 sm:p-6 space-y-5">
+          {/* Ticket Top Row: Discount Pill + Title */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-[#c62828] text-white font-black text-xs px-3 py-1 rounded-lg shadow-2xs">
+                {offer.discount}
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                <ShieldCheck size={12} className="text-emerald-600" />
+                {offer.code ? 'Promo Code' : 'Direct Deal'}
+              </span>
+            </div>
+
+            <h3 className="font-black text-slate-950 text-lg sm:text-xl leading-snug">
+              {offer.title}
+            </h3>
+
+            {offer.terms && (
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                {offer.terms}
+              </p>
+            )}
+          </div>
+
+          {/* Promo Code Box or Instant Deal Banner */}
+          {offer.code ? (
+            <div className="bg-red-50/40 border-2 border-dashed border-[#c62828]/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center justify-between sm:block">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
                   PROMO CODE
                 </span>
-                <span className="font-mono font-black text-xl sm:text-2xl text-slate-900 tracking-wider select-all">
+                <span className="font-mono font-black text-2xl text-slate-950 tracking-wider select-all">
                   {offer.code}
                 </span>
               </div>
-              <button
-                onClick={handleCopy}
-                className={`font-black text-xs px-5 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95 ${
-                  copied
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-[#c62828] hover:bg-[#b71c1c] text-white'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <Check size={15} className="text-amber-200 stroke-[3]" /> Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy size={15} /> Copy Code
-                  </>
-                )}
-              </button>
-            </div>
-            {copied && (
-              <div className="py-1.5 px-3 bg-emerald-50 border border-emerald-200 rounded-full inline-flex items-center gap-1.5 text-xs text-emerald-800 font-bold animate-fadeIn">
-                <Check size={14} className="text-emerald-600 stroke-[3]" /> Code copied to your clipboard!
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold leading-relaxed">
-            Deal activated! No coupon code needed. Your discount will be automatically applied at {offer.storeName}'s checkout.
-          </div>
-        )}
 
-        {/* 3 Step Instruction */}
-        <div className="bg-slate-50 rounded-xl p-3.5 text-left space-y-2 text-xs text-slate-600 border border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
-            <span>Click <strong>"Go to {offer.storeName} Store"</strong> below to open their website.</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">2</span>
-            <span>Add your chosen items to your shopping cart.</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">3</span>
-            <span>
-              {offer.code 
-                ? `Paste the copied code into the Promo / Discount box at checkout.` 
-                : `Enjoy your automatic savings during final checkout.`}
-            </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`flex-1 sm:flex-initial font-black text-xs px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                    copied
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-[#c62828] hover:bg-[#b71c1c] text-white'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check size={14} className="stroke-[3]" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>Copy Code</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={affiliateDestination}
+                  target="_blank"
+                  rel="nofollow sponsored"
+                  className="flex-1 sm:flex-initial px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+                >
+                  <span>Visit {offer.storeName}</span>
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs sm:text-sm text-emerald-900 font-semibold leading-snug">
+                Offer automatically applied at {offer.storeName} checkout (no code required).
+              </div>
+              <a
+                href={affiliateDestination}
+                target="_blank"
+                rel="nofollow sponsored"
+                className="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+              >
+                <span>Get Deal at {offer.storeName}</span>
+                <ExternalLink size={13} />
+              </a>
+            </div>
+          )}
+
+          {/* Clean 3-Step Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2">
+              <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                1
+              </span>
+              <span className="font-medium">Copy promo code</span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2">
+              <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                2
+              </span>
+              <span className="font-medium">Shop your items</span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2">
+              <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                3
+              </span>
+              <span className="font-medium">Paste at checkout</span>
+            </div>
           </div>
         </div>
-
-        {/* Dedicated Store Button: ONLY this button opens the partner site */}
-        <a
-          href={affiliateDestination}
-          target="_blank"
-          rel="nofollow sponsored"
-          className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition shadow flex items-center justify-center gap-2 group cursor-pointer"
-        >
-          <span>Go to {offer.storeName} Store</span>
-          <ExternalLink size={16} className="group-hover:translate-x-0.5 transition-transform" />
-        </a>
-
-        {offer.terms && (
-          <p className="text-[10px] text-slate-400 leading-tight">
-            Terms: {offer.terms}
-          </p>
-        )}
       </div>
     </div>
   );

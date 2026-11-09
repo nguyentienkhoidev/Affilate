@@ -1,5 +1,5 @@
 # CHIẾN LƯỢC TỐI ƯU SEO CẤP CAO & CHUYÊN SÂU (ADVANCED SEO BLUEPRINT)
-## HỆ THỐNG AFFILIATE NEWS, REVIEWS & COUPONS PORTAL (BARGORYA EVOLUTION)
+## HỆ THỐNG AFFILIATE NEWS, REVIEWS & COUPONS PORTAL (HEYGOODLY EVOLUTION)
 
 > **Mục tiêu chiến lược:** Đưa website lên Top 1 - Top 3 Google cho các từ khóa ngách và thương hiệu (*"[Brand] coupon code", "[Brand] promo code", "Review [Product]", "Discounts [Month] [Year]"*), tối đa hóa tỷ lệ nhấp chuột (CTR > 35% nhờ Rich Snippets), tối ưu hóa crawl budget cho hơn 3,700+ Stores và tuyệt đối an toàn trước mọi đợt quét thuật toán của Google (Google Helpful Content, Reviews System, Core Updates).
 
@@ -111,7 +111,7 @@ graph TD
 
 ### 2.3. Schema `HowTo` (Hướng Dẫn Nhập Mã Kèm Các Bước Trực Quan)
 - Đính kèm trên mỗi trang Store:
-  - *Bước 1: Chọn mã giảm giá phù hợp trên Bargorya và bấm "Get Code".*
+  - *Bước 1: Chọn mã giảm giá phù hợp trên HeyGoodly và bấm "Get Code".*
   - *Bước 2: Hệ thống tự động sao chép mã và mở website chính hãng.*
   - *Bước 3: Dán mã tại ô "Promo Code / Gift Card" ở trang thanh toán để được trừ tiền.*
 - Kích hoạt Rich Snippet dạng các bước (Step-by-step) trên Google Mobile.
@@ -136,7 +136,7 @@ Google đặc biệt khắt khe với các website Affiliate/Review qua các b�
 ### 3.2. Cơ Chế Kiểm Duyệt Thực Tế "Tested & Verified Badge"
 - Thuật toán Google ghét nhất các trang coupon bịa đặt mã giảm giá ảo.
 - **Tính năng độc quyền:**
-  - Trên mỗi coupon có badge: **"Verified on [Today's Date] by Bargorya Team"**.
+  - Trên mỗi coupon có badge: **"Verified on [Today's Date] by HeyGoodly Team"**.
   - Tỷ lệ thành công: *"98% Success Rate (Reported by 45 users today)"*.
   - Có nút biểu quyết: *"Mã này có hoạt động không? [Có 👍] [Không 👎]"* gửi feedback về hệ thống. Google đánh giá cực cao tín hiệu tương tác người dùng này (User Engagement Signals).
 
@@ -238,7 +238,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   
   const title = `${store.name} Coupon Codes (${store.maxDiscount}% Off) - ${currentMonthYear} | Verified`;
   const description = `Get exclusive ${store.name} promo codes, coupons & discounts for ${currentMonthYear}. Verified today: up to ${store.maxDiscount}% off + free shipping deals.`;
-  const canonicalUrl = `https://bargorya.com/store/${store.slug}`;
+  const canonicalUrl = `https://heygoodly.com/store/${store.slug}`;
 
   return {
     title,
@@ -250,7 +250,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       title,
       description,
       url: canonicalUrl,
-      siteName: 'Bargorya',
+      siteName: 'HeyGoodly',
       images: [
         {
           url: store.socialCardImage || store.logoUrl,
@@ -289,7 +289,7 @@ import { MetadataRoute } from 'next';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Thay vì dồn chung 1 file sitemap khổng lồ gây timeout bot
   // Next.js tự động tạo sitemap index chia nhỏ từng mảng
-  const baseUrl = 'https://bargorya.com';
+  const baseUrl = 'https://heygoodly.com';
   
   return [
     { url: `${baseUrl}`, lastModified: new Date(), changeFrequency: 'daily', priority: 1.0 },
@@ -309,14 +309,14 @@ export function StoreJsonLd({ store, offers, faqs }: StoreJsonLdProps) {
       {
         '@type': 'BreadcrumbList',
         'itemListElement': [
-          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://bargorya.com' },
-          { '@type': 'ListItem', 'position': 2, 'name': 'Stores', 'item': 'https://bargorya.com/stores' },
-          { '@type': 'ListItem', 'position': 3, 'name': store.name, 'item': `https://bargorya.com/store/${store.slug}` },
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://heygoodly.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Stores', 'item': 'https://heygoodly.com/stores' },
+          { '@type': 'ListItem', 'position': 3, 'name': store.name, 'item': `https://heygoodly.com/store/${store.slug}` },
         ],
       },
       {
         '@type': 'Organization',
-        '@id': `https://bargorya.com/store/${store.slug}#organization`,
+        '@id': `https://heygoodly.com/store/${store.slug}#organization`,
         'name': store.name,
         'url': store.destinationUrl,
         'logo': store.logoUrl,

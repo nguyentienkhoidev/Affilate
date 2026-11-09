@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ShieldAlert, ArrowLeft, RefreshCw } from 'lucide-react';
-import { usePermission, type RoleType } from '@/lib/admin/usePermission';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { usePermission } from '@/lib/admin/usePermission';
 
 interface UnauthorizedAccessProps {
   requiredPermission?: string;
@@ -13,7 +13,7 @@ export default function UnauthorizedAccess({
   requiredPermission = 'admin.access',
   moduleName = 'this restricted administrative section',
 }: UnauthorizedAccessProps) {
-  const { currentRole, switchRole, availableRoles } = usePermission();
+  const { currentRole } = usePermission();
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
@@ -30,24 +30,6 @@ export default function UnauthorizedAccess({
           <p className="text-xs text-slate-500 leading-relaxed">
             Your current role <strong className="text-slate-800">({currentRole.roleName})</strong> does not have permission <code className="text-indigo-600 font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">[{requiredPermission}]</code> required to access {moduleName}.
           </p>
-        </div>
-
-        {/* Demo Role Switcher helper */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-left">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <RefreshCw size={11} /> Switch Role For Testing
-          </span>
-          <select
-            value={currentRole.roleSlug}
-            onChange={(e) => switchRole(e.target.value as RoleType)}
-            className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          >
-            {availableRoles.map((r) => (
-              <option key={r.roleSlug} value={r.roleSlug}>
-                {r.roleName}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="flex items-center justify-center gap-3 pt-2">

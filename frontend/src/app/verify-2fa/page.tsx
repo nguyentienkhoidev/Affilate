@@ -16,10 +16,11 @@ import {
 } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/ui-constants';
+import { authService } from '@/services/authService';
 
 export default function Verify2FaPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@bargorya.com');
+  const [email, setEmail] = useState('admin@heygoodly.com');
   const [code, setCode] = useState('');
   const [isBackupMode, setIsBackupMode] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
@@ -29,17 +30,22 @@ export default function Verify2FaPage() {
 
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA);
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed.email) setEmail(parsed.email);
+      const storedEmail = localStorage.getItem('admin:tempEmail');
+      if (storedEmail) {
+        setEmail(storedEmail);
+      } else {
+        const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA);
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.email) setEmail(parsed.email);
+        }
       }
     } catch {
       // ignore
     }
   }, []);
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -57,26 +63,30 @@ export default function Verify2FaPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const activeTempToken = (typeof window !== 'undefined' ? localStorage.getItem('admin:tempToken') : '') || '';
+      const otpNum = !isBackupMode ? parseInt(code.trim(), 10) : undefined;
+      const recovery = isBackupMode ? code.trim().toUpperCase() : undefined;
+
+      const res = await authService.verify2Fa(activeTempToken, otpNum, recovery);
+
+      if (res.accessToken && res.user) {
+        setLoading(false);
+        setSuccess(true);
+        setTimeout(() => {
+          router.push(ROUTES.ADMIN.DASHBOARD);
+        }, 800);
+      } else {
+        throw new Error('Verification session did not return an access token.');
+      }
+    } catch (err: any) {
       setLoading(false);
-      setSuccess(true);
-      // Persist auth token
-      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, 'mock_jwt_token_2fa_verified_2026');
-      localStorage.setItem('admin:2fa:lastVerified', new Date().toISOString());
-
-      setTimeout(() => {
-        router.push(ROUTES.ADMIN.DASHBOARD);
-      }, 1000);
-    }, 700);
-  };
-
-  const handleAutoFillDemo = () => {
-    if (isBackupMode) {
-      setCode('8A41-92F0');
-    } else {
-      setCode('884219');
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Invalid verification code. Please check your authenticator and try again.';
+      setError(errMsg);
     }
-    setError('');
   };
 
   return (
@@ -128,7 +138,7 @@ export default function Verify2FaPage() {
           )}
 
           {/* Verification Form */}
-          <form onSubmit={handleVerify} className="space-y-4">
+          <form noValidate onSubmit={handleVerify} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">
                 {isBackupMode ? 'Backup Recovery Code' : '6-Digit TOTP Passcode'}
@@ -137,7 +147,6 @@ export default function Verify2FaPage() {
               <div className="relative">
                 <input
                   type="text"
-                  required
                   autoFocus
                   maxLength={isBackupMode ? 10 : 6}
                   value={code}
@@ -165,14 +174,6 @@ export default function Verify2FaPage() {
                 />
                 <span>Trust this browser for 30 days</span>
               </label>
-
-              <button
-                type="button"
-                onClick={handleAutoFillDemo}
-                className="text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles size={13} /> Demo Fill
-              </button>
             </div>
 
             {/* Submit Button */}

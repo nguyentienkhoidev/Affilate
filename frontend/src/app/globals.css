@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #F8F8F6;
@@ -9,6 +10,15 @@
   --brand-red-hover: #B71C1C;
   --border-subtle: #E7E7E5;
   --accent-gold: #EAB308;
+}
+
+html.dark {
+  color-scheme: dark;
+  --background: #0b0e14;
+  --surface: #121722;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-subtle: #232b3e;
 }
 
 @theme inline {
@@ -28,12 +38,143 @@ html {
 
 html,
 body {
-  background-color: #F8F8F6;
-  color: #171717;
+  background-color: var(--background);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+/* =========================================================
+   GLOBAL DARK MODE ADAPTATION (CLIENT & ADMIN PORTALS)
+   ========================================================= */
+html.dark body,
+html.dark .bg-\[\#F8F8F6\],
+html.dark .bg-\[\#f4f5f7\],
+html.dark .min-h-screen.bg-zinc-50,
+html.dark .h-screen.bg-zinc-50 {
+  background-color: #0b0e14 !important;
+  color: #f8fafc;
+}
+
+html.dark .bg-white,
+html.dark .bg-white\/95,
+html.dark .bg-white\/90,
+html.dark .bg-white\/80,
+html.dark .bg-white\/50 {
+  background-color: #121722 !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/40,
+html.dark .bg-zinc-50:not(.h-screen):not(.min-h-screen),
+html.dark .bg-zinc-50\/80,
+html.dark .bg-zinc-50\/70,
+html.dark .bg-zinc-50\/50,
+html.dark .bg-slate-100,
+html.dark .bg-zinc-100 {
+  background-color: #171e2c !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-zinc-50:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-zinc-100:hover {
+  background-color: #1d2536 !important;
+}
+
+/* Typography in Dark Mode */
+html.dark .text-\[\#171717\],
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-zinc-950,
+html.dark .text-zinc-900 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-800,
+html.dark .text-zinc-800,
+html.dark .text-slate-700,
+html.dark .text-zinc-700 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-zinc-600,
+html.dark .text-slate-500,
+html.dark .text-zinc-500,
+html.dark .text-\[\#737373\],
+html.dark .text-\[\#525252\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .hover\:text-\[\#171717\]:hover,
+html.dark .hover\:text-slate-900:hover,
+html.dark .hover\:text-zinc-900:hover {
+  color: #ffffff !important;
+}
+
+/* Borders & Dividers in Dark Mode */
+html.dark .border-\[\#E7E7E5\],
+html.dark .border-slate-200,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-200\/80,
+html.dark .border-zinc-200,
+html.dark .border-zinc-200\/80,
+html.dark .border-slate-300,
+html.dark .border-zinc-300 {
+  border-color: #232b3e !important;
+}
+
+html.dark .border-slate-100,
+html.dark .border-zinc-100 {
+  border-color: #1a2232 !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-zinc-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#E7E7E5\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e2536 !important;
+}
+
+/* Form Inputs, Selects & Textareas in Dark Mode */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html.dark select:not(.bg-transparent),
+html.dark textarea {
+  background-color: #0d111a !important;
+  color: #f8fafc !important;
+  border-color: #273046 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark option {
+  background-color: #121722;
+  color: #f8fafc;
+}
+
+/* Rich Article Content in Dark Mode */
+html.dark .article-content,
+html.dark .prose {
+  color: #E2E8F0 !important;
+}
+
+html.dark .article-content h1,
+html.dark .article-content h2,
+html.dark .article-content h3,
+html.dark .article-content h4,
+html.dark .article-content strong {
+  color: #F8FAFC !important;
 }
 
 [id] {
@@ -47,7 +188,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F8F8F6;
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -55,8 +196,16 @@ body {
   border-radius: 9999px;
 }
 
+html.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #A8A8A2;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 /* Explicit no-scrollbar utility */

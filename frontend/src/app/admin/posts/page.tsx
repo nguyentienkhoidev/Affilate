@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import {
   BookOpen,
   Plus,
@@ -15,64 +16,233 @@ import {
   CalendarClock,
   FileText,
   ExternalLink,
-  Star,
-  SlidersHorizontal,
-  Tag as TagIcon,
-  Check,
   Award,
+  Eye,
 } from 'lucide-react';
 import Pagination from '@/components/admin/Pagination';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminFilterBar from '@/components/admin/AdminFilterBar';
+import AdminTableShell from '@/components/admin/AdminTableShell';
+import AdminActionButton from '@/components/admin/AdminActionButton';
+import { adminSelectClass, adminSearchInputClass } from '@/components/admin/adminStyles';
 import { ROUTES } from '@/constants/routes';
-import { useAdminCollection } from '@/lib/admin/useAdminCollection';
-import {
-  POSTS_STORE_KEY,
-  DEFAULT_ARTICLES,
-  CLIENT_CATEGORIES,
-  type AdminArticle,
-} from './_lib/data';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { apiClient } from '@/lib/api/axios-client';
+import { useServerPagination } from '@/lib/admin/useServerPagination';
+import type { AdminArticle, CategoryOption } from './_lib/data';
 import { usePermission } from '@/lib/admin/usePermission';
+import { useToast } from '@/context/ToastContext';
+import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
+
+type StatusFilter = 'ALL' | 'PUBLISHED' | 'SCHEDULED' | 'DRAFT';
+type FeaturedFilter = 'ALL' | 'FEATURED';
+type SortBy = 'newest' | 'views-desc' | 'title-asc';
+
+interface PostStats {
+  total: number;
+  published: number;
+  scheduled: number;
+  draft: number;
+  totalViews: number;
+}
+
+const TABLE_COLUMNS = [
+  { label: 'Article Headline' },
+  { label: 'Category' },
+  { label: 'Author' },
+  { label: 'Reader Views' },
+  { label: 'Status' },
+  { label: 'Actions', className: 'text-right w-44 min-w-[176px]' },
+];
+
+/** Mini stat card used in the top summary grid */
+function StatCard({ label, value, valueColor }: { label: string; value: number | string; valueColor: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
+      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">{label}</span>
+      <span className={`text-xl sm:text-2xl font-black mt-1 block ${valueColor}`}>{value}</span>
+    </div>
+  );
+}
 
 export default function AdminPostsPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Loading articles...</div>}>
+      <AdminPostsContent />
+    </Suspense>
+  );
+}
+
+function AdminPostsContent() {
   const { hasPermission } = usePermission();
-  const { items: articles, create, remove } = useAdminCollection<AdminArticle>(POSTS_STORE_KEY, DEFAULT_ARTICLES);
+  const { toast, confirm: confirmModal } = useToast();
+  const searchParams = useSearchParams();
+  const catParam = searchParams.get('categoryId') || searchParams.get('category');
 
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'SCHEDULED' | 'DRAFT'>('ALL');
-  const [featuredFilter, setFeaturedFilter] = useState<'ALL' | 'FEATURED' | 'STANDARD'>('ALL');
-  const [sortBy, setSortBy] = useState<'newest' | 'views-desc' | 'rating-desc' | 'title-asc'>('newest');
-  const [notification, setNotification] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState(catParam || 'ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [featuredFilter, setFeaturedFilter] = useState<FeaturedFilter>('ALL');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  // Categories list loaded on-demand per Rule 2
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
 
-  const showToast = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
+  // Global post stats from backend database
+  const [stats, setStats] = useState<PostStats>({
+    total: 0,
+    published: 0,
+    scheduled: 0,
+    draft: 0,
+    totalViews: 0,
+  });
 
-  // Actions
-  const handleClone = (art: AdminArticle) => {
-    const cloned: AdminArticle = {
-      ...art,
-      id: `art-${Date.now()}`,
-      title: `${art.title} (Draft Copy)`,
-      slug: `${art.slug}-copy-${Date.now().toString().slice(-4)}`,
-      status: 'DRAFT',
-      views: 0,
-      publishedAt: 'Draft',
-    };
-    create(cloned);
-    showToast(`Duplicated "${art.title}" as a new draft`);
-  };
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await apiClient.get<{ success: boolean; data: PostStats }>(API_ENDPOINTS.ADMIN.POST_STATS);
+      if (res.data?.data) {
+        setStats(res.data.data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch post stats from backend:', err);
+    }
+  }, []);
 
-  const handleDelete = (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete article: "${title}"?`)) {
-      remove(id);
-      showToast('Article deleted successfully');
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const loadCategoriesOnDemand = async () => {
+    if (hasLoadedCategories) return;
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORIES);
+      const list = res.data?.data?.content || res.data?.data;
+      if (Array.isArray(list)) {
+        setCategories(
+          list.map((c: any) => ({
+            id: Number(c.id),
+            name: String(c.name),
+            slug: String(c.slug),
+          }))
+        );
+        setHasLoadedCategories(true);
+      }
+    } catch (err) {
+      console.warn('Failed to load categories on-demand:', err);
     }
   };
+
+  const {
+    items: pagedItems,
+    loading: isLoading,
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    setCurrentPage,
+    setPageSize,
+    setParam,
+    refresh: refreshPosts,
+  } = useServerPagination<AdminArticle>({
+    endpoint: API_ENDPOINTS.ADMIN.POSTS,
+    defaultPageSize: 8,
+    initialParams: {
+      search: '',
+      categoryId: catParam && catParam !== 'ALL' && !isNaN(Number(catParam)) ? Number(catParam) : undefined,
+      status: undefined,
+      active: undefined,
+      featured: undefined,
+      sortBy: 'id',
+      direction: 'desc',
+    },
+    mapItem: (p: any): AdminArticle => {
+      const now = Date.now();
+      const pubTime = p.publishedAt ? new Date(p.publishedAt).getTime() : 0;
+      const isFuture = pubTime > now;
+      let status: 'PUBLISHED' | 'DRAFT' | 'SCHEDULED' = 'DRAFT';
+      if (p.status === 'PUBLISHED' || p.status === 'SCHEDULED' || p.status === 'DRAFT') {
+        status = p.status;
+      } else if (p.isActive) {
+        status = isFuture ? 'SCHEDULED' : 'PUBLISHED';
+      }
+
+      return {
+        id: String(p.id),
+        title: p.title || '',
+        slug: p.slug || '',
+        excerpt: p.excerpt || '',
+        content: p.excerpt || '',
+        imageUrl: p.image || '',
+        category: p.categoryName || 'General',
+        categoryId: p.categoryId ? Number(p.categoryId) : undefined,
+        author: {
+          name: p.authorName || 'HeyGoodly Editorial',
+          role: p.authorRole || '',
+          avatar: p.authorAvatar || '',
+        },
+        status,
+        views: Number(p.viewCount || 0),
+        rating: p.rating ? String(p.rating) : '',
+        featured: Boolean(p.isFeatured),
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        storeSlug: p.storeSlug || undefined,
+        storeName: p.storeName || undefined,
+        publishedAt: p.publishedAt
+          ? new Date(p.publishedAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })
+          : 'Today',
+        scheduledAt: isFuture ? p.publishedAt : undefined,
+        readTime: p.readTime || '',
+      };
+    },
+    fallbackItems: [],
+  });
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setParam('search', val.trim() || undefined);
+  };
+
+  const handleCategoryChange = (val: string) => {
+    setCategoryFilter(val);
+    setParam('categoryId', val !== 'ALL' ? Number(val) : undefined);
+  };
+
+  const handleStatusChange = (val: StatusFilter) => {
+    setStatusFilter(val);
+    if (val === 'ALL') {
+      setParam('status', undefined);
+      setParam('active', undefined);
+    } else {
+      setParam('status', val);
+      setParam('active', undefined);
+    }
+  };
+
+  const handleFeaturedChange = (val: FeaturedFilter) => {
+    setFeaturedFilter(val);
+    setParam('featured', val === 'FEATURED' ? true : undefined);
+  };
+
+  const handleSortChange = (val: SortBy) => {
+    setSortBy(val);
+    if (val === 'views-desc') {
+      setParam('sortBy', 'viewCount');
+      setParam('direction', 'desc');
+    } else if (val === 'title-asc') {
+      setParam('sortBy', 'title');
+      setParam('direction', 'asc');
+    } else {
+      setParam('sortBy', 'id');
+      setParam('direction', 'desc');
+    }
+  };
+
+  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || featuredFilter !== 'ALL' || sortBy !== 'newest';
 
   const handleResetFilters = () => {
     setSearch('');
@@ -80,450 +250,302 @@ export default function AdminPostsPage() {
     setStatusFilter('ALL');
     setFeaturedFilter('ALL');
     setSortBy('newest');
-    setCurrentPage(1);
+    setParam('search', undefined);
+    setParam('categoryId', undefined);
+    setParam('status', undefined);
+    setParam('active', undefined);
+    setParam('featured', undefined);
+    setParam('sortBy', 'id');
+    setParam('direction', 'desc');
   };
 
-  const isFiltered =
-    search !== '' ||
-    categoryFilter !== 'ALL' ||
-    statusFilter !== 'ALL' ||
-    featuredFilter !== 'ALL' ||
-    sortBy !== 'newest';
-
-  // Filter calculations & sorting
-  const filtered = articles
-    .filter((art) => {
-      const matchSearch =
-        art.title.toLowerCase().includes(search.toLowerCase()) ||
-        art.excerpt.toLowerCase().includes(search.toLowerCase()) ||
-        art.slug.toLowerCase().includes(search.toLowerCase()) ||
-        art.author.name.toLowerCase().includes(search.toLowerCase()) ||
-        art.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-
-      const matchCategory = categoryFilter === 'ALL' || art.category === categoryFilter;
-      const matchStatus = statusFilter === 'ALL' || art.status === statusFilter;
-
-      let matchFeatured = true;
-      if (featuredFilter === 'FEATURED') matchFeatured = art.featured;
-      else if (featuredFilter === 'STANDARD') matchFeatured = !art.featured;
-
-      return matchSearch && matchCategory && matchStatus && matchFeatured;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'views-desc') return (b.views || 0) - (a.views || 0);
-      if (sortBy === 'rating-desc') return parseFloat(b.rating || '0') - parseFloat(a.rating || '0');
-      if (sortBy === 'title-asc') return a.title.localeCompare(b.title);
-      return b.id.localeCompare(a.id);
+  const handleClone = async (art: AdminArticle) => {
+    const confirmed = await confirmModal({
+      title: 'Clone Article',
+      message: `Duplicate "${art.title}" as a new draft copy?`,
+      confirmText: 'Clone',
+      cancelText: 'Cancel',
+      variant: 'info',
     });
+    if (!confirmed) return;
+    try {
+      await apiClient.post(API_ENDPOINTS.ADMIN.POST_CLONE(art.id));
+      refreshPosts();
+      fetchStats();
+      toast.success(`Duplicated "${art.title}" as a new draft`);
+    } catch {
+      toast.error('Failed to clone article');
+    }
+  };
 
-  const totalItems = filtered.length;
-  const paginatedArticles = filtered.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const handleDelete = async (art: AdminArticle) => {
+    const confirmed = await confirmModal({
+      title: 'Delete Article',
+      message: (
+        <span>
+          Are you sure you want to permanently delete{' '}
+          <strong className="text-rose-600 font-bold">{art.title}</strong>?
+        </span>
+      ),
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await apiClient.delete(API_ENDPOINTS.ADMIN.POST_DETAIL(art.id));
+      refreshPosts();
+      fetchStats();
+      toast.success('Article deleted successfully');
+    } catch {
+      toast.error('Failed to delete article');
+    }
+  };
 
-  const publishedCount = articles.filter((a) => a.status === 'PUBLISHED').length;
-  const scheduledCount = articles.filter((a) => a.status === 'SCHEDULED').length;
-  const draftCount = articles.filter((a) => a.status === 'DRAFT').length;
-  const reviewsCount = articles.filter((a) => a.category === 'Reviews').length;
-  const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
+  if (!hasPermission('post.view')) {
+    return <UnauthorizedAccess requiredPermission="post.view" moduleName="Articles & Reviews" />;
+  }
 
   return (
     <div className="space-y-6">
-      
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
-          <Check size={16} className="text-emerald-400" />
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {/* 1. Header Area */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              <BookOpen className="text-[#C62828]" size={26} /> Editorial Articles & Reviews
-            </h1>
-            <span className="bg-[#C62828]/10 text-[#C62828] text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {articles.length} Articles Total
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Author and publish independent product tests, buying guides, and breaking editorial dispatches synchronized with the client journal.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+      {/* Header */}
+      <AdminPageHeader
+        icon={BookOpen}
+        title="Editorial Articles & Reviews"
+        badge={`${stats.total || totalItems} Articles Total`}
+        description="Author and publish independent product tests, buying guides, and breaking editorial dispatches."
+      >
+        <Link
+          href="/posts"
+          target="_blank"
+          className="h-9 px-3.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition shadow-2xs whitespace-nowrap shrink-0"
+        >
+          <span>Live Journal</span>
+          <ExternalLink size={13} />
+        </Link>
+        {hasPermission('post.create') && (
           <Link
-            href="/posts"
-            target="_blank"
-            className="h-9 px-3.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition shadow-2xs whitespace-nowrap shrink-0"
+            href={ROUTES.ADMIN.POST_CREATE}
+            className="h-9 px-4 inline-flex items-center justify-center gap-2 bg-[#C62828] hover:bg-[#B71C1C] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
-            <span>Live Journal</span>
-            <ExternalLink size={13} />
+            <Plus size={16} /> Write New Article
           </Link>
-          {hasPermission('post.create') && (
-            <Link
-              href={ROUTES.ADMIN.POST_CREATE}
-              className="h-9 px-4 inline-flex items-center justify-center gap-2 bg-[#C62828] hover:bg-[#B71C1C] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <Plus size={16} /> Write New Article
-            </Link>
-          )}
-        </div>
-      </div>
+        )}
+      </AdminPageHeader>
 
-      {/* 2. Top Stats Overview */}
+      {/* Stats overview (100% DB-driven from /api/v1/admin/posts/stats) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Published Stories</span>
-          <span className="text-xl sm:text-2xl font-black text-emerald-600 mt-1 block">{publishedCount}</span>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Scheduled Releases</span>
-          <span className="text-xl sm:text-2xl font-black text-indigo-600 mt-1 block">{scheduledCount}</span>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pending Drafts</span>
-          <span className="text-xl sm:text-2xl font-black text-amber-600 mt-1 block">{draftCount}</span>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Reader Views</span>
-          <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{totalViews.toLocaleString()}</span>
-        </div>
+        <StatCard
+          label="Published Stories"
+          value={stats.published}
+          valueColor="text-emerald-600"
+        />
+        <StatCard
+          label="Scheduled Releases"
+          value={stats.scheduled}
+          valueColor="text-indigo-600"
+        />
+        <StatCard
+          label="Pending Drafts"
+          value={stats.draft}
+          valueColor="text-amber-600"
+        />
+        <StatCard
+          label="Total Reader Views"
+          value={(stats.totalViews || 0).toLocaleString()}
+          valueColor="text-slate-900"
+        />
       </div>
 
-      {/* 3. Advanced Filter & Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
-        
-        {/* Search & Select Grid */}
+      {/* Filters */}
+      <AdminFilterBar totalItems={totalItems} itemName="articles" isFiltered={isFiltered} onReset={handleResetFilters}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
             <input
               type="text"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search headline, author, tag, slug..."
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828]"
+              className={adminSearchInputClass}
             />
           </div>
 
-          {/* Category Dropdown */}
-          <div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="ALL">All Editorial Categories</option>
-              {CLIENT_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={categoryFilter}
+            onFocus={loadCategoriesOnDemand}
+            onClick={loadCategoriesOnDemand}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className={adminSelectClass}
+          >
+            <option value="ALL">All Editorial Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={String(cat.id)}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
 
-          {/* Status Dropdown */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as any);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="ALL">All Publishing Statuses</option>
-              <option value="PUBLISHED">Published Only</option>
-              <option value="SCHEDULED">Scheduled Only (Hẹn giờ)</option>
-              <option value="DRAFT">Drafts Only</option>
-            </select>
-          </div>
+          <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value as StatusFilter)} className={adminSelectClass}>
+            <option value="ALL">All Publishing Statuses</option>
+            <option value="PUBLISHED">Published Only</option>
+            <option value="SCHEDULED">Scheduled Only</option>
+            <option value="DRAFT">Drafts Only</option>
+          </select>
 
-          {/* Sort By Dropdown */}
-          <div>
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value as any);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="newest">Sort: Newly Created</option>
-              <option value="views-desc">Sort: Highest Reader Views</option>
-              <option value="rating-desc">Sort: Highest Score / Rating</option>
-              <option value="title-asc">Sort: Title (A to Z)</option>
-            </select>
-          </div>
+          <select value={sortBy} onChange={(e) => handleSortChange(e.target.value as SortBy)} className={adminSelectClass}>
+            <option value="newest">Sort: Newly Created</option>
+            <option value="views-desc">Sort: Highest Reader Views</option>
+            <option value="title-asc">Sort: Title (A to Z)</option>
+          </select>
         </div>
 
-        {/* Feature Pills & Clear Action */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-400 flex items-center gap-1 font-bold">
-              <Award size={12} /> Highlights:
-            </span>
-            <button
-              onClick={() => {
-                setFeaturedFilter(featuredFilter === 'FEATURED' ? 'ALL' : 'FEATURED');
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1 rounded-lg font-semibold transition text-[11px] cursor-pointer ${
-                featuredFilter === 'FEATURED'
-                  ? 'bg-[#C62828] text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              ★ Featured Editor Picks
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-500 font-medium">
-              Found <strong className="text-slate-900">{totalItems}</strong> matching articles
-            </span>
-            {isFiltered && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="text-[11px] font-bold text-[#C62828] hover:underline cursor-pointer"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
+        {/* Featured filter pill */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[11px] text-slate-400 flex items-center gap-1 font-bold">
+            <Award size={12} /> Highlights:
+          </span>
+          <button
+            type="button"
+            onClick={() => handleFeaturedChange(featuredFilter === 'FEATURED' ? 'ALL' : 'FEATURED')}
+            className={`px-3 py-1 rounded-lg font-semibold transition text-[11px] cursor-pointer ${
+              featuredFilter === 'FEATURED'
+                ? 'bg-[#C62828] text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            ★ Featured Editor Picks
+          </button>
         </div>
+      </AdminFilterBar>
 
-      </div>
+      {/* Table */}
+      <AdminTableShell
+        columns={TABLE_COLUMNS}
+        rowCount={pagedItems.length}
+        emptyMessage="No articles match your current search and filter criteria."
+      >
+        {pagedItems.map((art) => (
+          <tr key={art.id} className="hover:bg-slate-50/60 transition-colors group">
+            {/* Headline + thumbnail */}
+            <td className="py-3.5 px-4 max-w-md">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative border border-slate-200 shadow-2xs">
+                  {art.imageUrl ? (
+                    <Image src={art.imageUrl} alt={art.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                      <BookOpen size={16} />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-[#C62828] transition-colors">
+                      {art.title}
+                    </span>
+                    {art.featured && (
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded shrink-0">Hero</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                    <span className="font-mono text-slate-400">/post/{art.slug}</span>
+                    {art.readTime && (
+                      <>
+                        <span>•</span>
+                        <span className="flex items-center gap-1"><Clock size={11} /> {art.readTime}</span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <span>{art.publishedAt}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
 
-      {/* 4. Article Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3 px-4">Article Headline</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Author</th>
-                <th className="py-3 px-4">Score & Rating</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right w-44 min-w-[176px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedArticles.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
-                    No articles match your current search and filter criteria.
-                  </td>
-                </tr>
+            {/* Category */}
+            <td className="py-3.5 px-4">
+              <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-[11px]">{art.category}</span>
+            </td>
+
+            {/* Author */}
+            <td className="py-3.5 px-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200 shrink-0 relative border border-slate-300">
+                  {art.author.avatar ? (
+                    <Image src={art.author.avatar} alt={art.author.name} fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">
+                      {art.author.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <span className="font-medium text-slate-800 text-xs">{art.author.name}</span>
+              </div>
+            </td>
+
+            {/* Reader Views */}
+            <td className="py-3.5 px-4">
+              <div className="flex items-center gap-1.5 text-slate-800 font-bold">
+                <Eye size={13} className="text-slate-400" />
+                <span className="font-mono text-xs">{(art.views || 0).toLocaleString()}</span>
+                <span className="text-[10px] text-slate-400 font-normal">views</span>
+              </div>
+            </td>
+
+            {/* Status */}
+            <td className="py-3.5 px-4 whitespace-nowrap">
+              {art.status === 'PUBLISHED' ? (
+                <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 text-[10px] shadow-2xs">
+                  <CheckCircle2 size={12} /> Published
+                </span>
+              ) : art.status === 'SCHEDULED' ? (
+                <div className="space-y-0.5">
+                  <span className="inline-flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 text-[10px] shadow-2xs">
+                    <CalendarClock size={12} className="text-indigo-600" /> Scheduled
+                  </span>
+                  <span className="text-[10px] text-indigo-600 font-mono block">
+                    {art.scheduledAt
+                      ? new Date(art.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : art.publishedAt}
+                  </span>
+                </div>
               ) : (
-                paginatedArticles.map((art) => (
-                  <tr key={art.id} className="hover:bg-slate-50/60 transition-colors group">
-                    
-                    {/* Article Headline + Cover thumbnail */}
-                    <td className="py-3.5 px-4 max-w-md">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative border border-slate-200 shadow-2xs">
-                          {art.imageUrl ? (
-                            <Image
-                              src={art.imageUrl}
-                              alt={art.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-300">
-                              <BookOpen size={16} />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-[#C62828] transition-colors">
-                              {art.title}
-                            </span>
-                            {art.featured && (
-                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded shrink-0">
-                                Hero
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                            <span className="font-mono text-slate-400">/post/{art.slug}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Clock size={11} /> {art.readTime}
-                            </span>
-                            <span>•</span>
-                            <span>{art.publishedAt}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Category */}
-                    <td className="py-3.5 px-4">
-                      <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-[11px]">
-                        {art.category}
-                      </span>
-                    </td>
-
-                    {/* Author */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200 shrink-0 relative border border-slate-300">
-                          {art.author.avatar ? (
-                            <Image
-                              src={art.author.avatar}
-                              alt={art.author.name}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">
-                              {art.author.name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-                        <span className="font-medium text-slate-800 text-xs">
-                          {art.author.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Rating & Views */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1 text-slate-800 font-bold">
-                          <Star size={13} className="text-amber-500 fill-amber-500" />
-                          <span>{art.rating}</span>
-                          <span className="text-[10px] text-slate-400 font-normal">/ 5.0</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-mono block">
-                          {(art.views || 0).toLocaleString()} views
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Publication Status */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      {art.status === 'PUBLISHED' ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 text-[10px] shadow-2xs">
-                          <CheckCircle2 size={12} /> Published
-                        </span>
-                      ) : art.status === 'SCHEDULED' ? (
-                        <div className="space-y-0.5">
-                          <span
-                            className="inline-flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 text-[10px] shadow-2xs"
-                            title={`Scheduled for: ${art.scheduledAt || art.publishedAt}`}
-                          >
-                            <CalendarClock size={12} className="text-indigo-600" /> Scheduled
-                          </span>
-                          {art.scheduledAt ? (
-                            <span className="text-[10px] text-indigo-600 font-mono block">
-                              {new Date(art.scheduledAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-indigo-600 font-mono block">
-                              {art.publishedAt}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 text-[10px] shadow-2xs">
-                          <FileText size={12} /> Draft
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap w-44 min-w-[176px]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* View live client post */}
-                        <Link
-                          href={`/post/${art.slug}`}
-                          target="_blank"
-                          className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 hover:border-slate-300 transition shrink-0 shadow-2xs"
-                          title="View Live on Client Website"
-                        >
-                          <ExternalLink size={13} />
-                        </Link>
-
-                        {/* Duplicate */}
-                        {hasPermission('post.clone') && (
-                          <button
-                            onClick={() => handleClone(art)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-indigo-50/50 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Clone Article"
-                          >
-                            <Copy size={13} />
-                          </button>
-                        )}
-
-                        {/* Edit */}
-                        {hasPermission('post.update') && (
-                          <Link
-                            href={ROUTES.ADMIN.POST_EDIT(art.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-rose-50/60 text-slate-600 hover:text-[#C62828] hover:border-[#C62828]/40 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Edit Article & Content"
-                          >
-                            <Edit2 size={13} />
-                          </Link>
-                        )}
-
-                        {/* Delete */}
-                        {hasPermission('post.delete') && (
-                          <button
-                            onClick={() => handleDelete(art.id, art.title)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-rose-50/60 text-slate-400 hover:text-rose-600 hover:border-rose-300 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Delete Article"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-
-                  </tr>
-                ))
+                <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 text-[10px] shadow-2xs">
+                  <FileText size={12} /> Draft
+                </span>
               )}
-            </tbody>
-          </table>
-        </div>
+            </td>
 
-        {/* Pagination Controls */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-          pageSizeOptions={[4, 8, 16, 32]}
-          itemName="articles"
-        />
+            {/* Actions */}
+            <td className="py-3.5 px-4 text-right whitespace-nowrap w-44 min-w-[176px]">
+              <div className="flex items-center justify-end gap-1.5">
+                <AdminActionButton icon={ExternalLink} href={`/post/${art.slug}`} target="_blank" title="View Live on Client Website" variant="default" />
+                {hasPermission('post.clone') && (
+                  <AdminActionButton icon={Copy} onClick={() => handleClone(art)} title="Clone Article" variant="indigo" />
+                )}
+                {hasPermission('post.update') && (
+                  <AdminActionButton icon={Edit2} href={ROUTES.ADMIN.POST_EDIT(art.id)} title="Edit Article & Content" variant="primary" />
+                )}
+                {hasPermission('post.delete') && (
+                  <AdminActionButton icon={Trash2} onClick={() => handleDelete(art)} title="Delete Article" variant="danger" />
+                )}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </AdminTableShell>
 
-      </div>
-
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[4, 8, 16, 32]}
+        itemName="articles"
+      />
     </div>
   );
 }

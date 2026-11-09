@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.bargorya</groupId>
+    <groupId>com.heygoodly</groupId>
     <artifactId>portal-backend</artifactId>
     <version>1.0.0</version>
-    <name>Bargorya Affiliate Portal Backend</name>
+    <name>HeyGoodly Affiliate Portal Backend</name>
     <description>Affiliate News, Reviews and Coupons Portal Backend</description>
 
     <properties>
@@ -25,6 +25,7 @@
         <thumbnailator.version>0.4.20</thumbnailator.version>
         <googleauth.version>1.5.0</googleauth.version>
         <lombok.version>1.18.36</lombok.version>
+        <minio.version>8.5.10</minio.version>
     </properties>
 
     <dependencies>
@@ -44,6 +45,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
         <!-- Database & Liquibase -->
@@ -90,6 +95,13 @@
             <version>${thumbnailator.version}</version>
         </dependency>
 
+        <!-- MinIO S3 Object Storage -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>${minio.version}</version>
+        </dependency>
+
         <!-- Lombok & MapStruct -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -129,6 +141,19 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <fork>true</fork>
+                    <compilerArgs>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED</arg>
+                    </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import {
   UploadCloud,
@@ -13,8 +13,13 @@ import {
   Copy,
   ExternalLink,
   Layers,
+  Tag,
 } from 'lucide-react';
 import MediaLibraryModal from './MediaLibraryModal';
+import MediaTagInput from './MediaTagInput';
+import type { MediaItem } from '@/app/admin/media/_lib/data';
+import { useOptionalToast } from '@/context/ToastContext';
+import { mediaService } from '@/services/mediaService';
 
 interface ImageUploadProps {
   value?: string;
@@ -33,6 +38,7 @@ export default function ImageUpload({
   description = 'PNG, JPG, WEBP or GIF (Max 10MB). High resolution recommended.',
   aspectRatio = 'video',
 }: ImageUploadProps) {
+  const toastCtx = useOptionalToast();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
@@ -41,15 +47,29 @@ export default function ImageUpload({
   const [urlInput, setUrlInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [imgLoadError, setImgLoadError] = useState(false);
+  const [imgLoading, setImgLoading] = useState(true);
+
+  useEffect(() => {
+    setImgLoadError(false);
+    setImgLoading(true);
+  }, [value]);
+
+  // Staged Upload with Mandatory Tags
+  const [stagedFile, setStagedFile] = useState<File | null>(null);
+  const [stagedPreview, setStagedPreview] = useState<string>('');
+  const [stagedTags, setStagedTags] = useState<string[]>([]);
+  const [showTagModal, setShowTagModal] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const aspectClass = {
-    video: 'aspect-[16/9]',
-    square: 'aspect-square max-w-[240px]',
-    banner: 'aspect-[21/9]',
+    video: 'h-48 sm:h-56 max-h-[220px]',
+    square: 'h-40 sm:h-44 max-h-[176px]',
+    banner: 'h-28 sm:h-32 max-h-[128px]',
   }[aspectRatio];
 
-  const handleUploadFile = async (file: File) => {
+  const handleSelectFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       setError('Please upload a valid image file (PNG, JPG, WEBP, GIF)');
       return;
@@ -61,52 +81,80 @@ export default function ImageUpload({
     }
 
     setError(null);
+    setStagedFile(file);
+    setStagedPreview(URL.createObjectURL(file));
+    setStagedTags([folder === 'stores' ? 'store' : folder === 'banners' ? 'banner' : 'article']);
+    setShowTagModal(true);
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!stagedFile) return;
+    if (stagedTags.length === 0) {
+      toastCtx?.toast.error('Please enter at least 1 tag to save the image to the library!');
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(20);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', folder);
-
       setUploadProgress(45);
+      const data = await mediaService.uploadMedia(stagedFile, folder, stagedTags);
+      setUploadProgress(85);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      if (data && data.url) {
+        const newItem: MediaItem = {
+          id: data.id,
+          name: data.name,
+          url: data.url,
+          category: data.category,
+          size: data.size,
+          dimensions: data.dimensions,
+          format: data.format,
+          createdAt: data.createdAt ? data.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+          tags: data.tags || stagedTags,
+        };
 
-      setUploadProgress(80);
-
-      if (!response.ok) {
-        throw new Error('Upload to local server failed, falling back to data URL');
-      }
-
-      const data = await response.json();
-      if (data.url) {
         onChange(data.url);
         setIsUploading(false);
         setUploadProgress(100);
+        setShowTagModal(false);
+        setStagedFile(null);
+        toastCtx?.toast.success('Image uploaded and linked successfully!');
         return;
       }
       throw new Error('No URL returned from server');
     } catch (err: any) {
       console.warn('Fallback to browser FileReader due to upload error:', err);
-      // Fallback: Read as Base64 Data URL so user is never blocked!
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         if (result) {
+          const newItem: MediaItem = {
+            id: `m-${Date.now()}`,
+            name: stagedFile.name,
+            url: result,
+            category: folder as any,
+            size: `${Math.round(stagedFile.size / 1024)} KB`,
+            dimensions: 'Original',
+            format: stagedFile.name.split('.').pop()?.toUpperCase() || 'WEBP',
+            createdAt: new Date().toISOString().split('T')[0],
+            tags: stagedTags,
+          };
           onChange(result);
         }
         setIsUploading(false);
         setUploadProgress(100);
+        setShowTagModal(false);
+        setStagedFile(null);
       };
       reader.onerror = () => {
         setError('Failed to process image');
         setIsUploading(false);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(stagedFile);
     }
   };
 
@@ -126,13 +174,13 @@ export default function ImageUpload({
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleUploadFile(e.dataTransfer.files[0]);
+      handleSelectFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      handleUploadFile(e.target.files[0]);
+      handleSelectFile(e.target.files[0]);
     }
   };
 
@@ -165,10 +213,11 @@ export default function ImageUpload({
           <button
             type="button"
             onClick={() => setMode('upload')}
-            className={`h-7 px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition cursor-pointer ${mode === 'upload'
-              ? 'bg-white text-slate-900 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
-              }`}
+            className={`h-7 px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition cursor-pointer ${
+              mode === 'upload'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
+            }`}
           >
             <UploadCloud size={13} className={mode === 'upload' ? 'text-[#C62828]' : 'text-slate-400'} />
             <span>Upload File</span>
@@ -176,10 +225,11 @@ export default function ImageUpload({
           <button
             type="button"
             onClick={() => setMode('url')}
-            className={`h-7 px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition cursor-pointer ${mode === 'url'
-              ? 'bg-white text-slate-900 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
-              }`}
+            className={`h-7 px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition cursor-pointer ${
+              mode === 'url'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
+            }`}
           >
             <LinkIcon size={13} className={mode === 'url' ? 'text-[#C62828]' : 'text-slate-400'} />
             <span>Image Link</span>
@@ -196,55 +246,89 @@ export default function ImageUpload({
         </div>
       </div>
 
-      {/* When Value Exists: Show Preview */}
+      {/* When Value Exists: Show Fitted Preview */}
       {value ? (
-        <div className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-950">
-          <div className={`relative w-full ${aspectClass}`}>
-            <Image
-              src={value}
-              alt="Uploaded Preview"
-              fill
-              className="object-cover transition duration-300 group-hover:scale-102"
-              unoptimized={value.startsWith('data:') || value.startsWith('/uploads/')}
-            />
+        <div className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100/80 p-2">
+          <div className={`relative w-full ${aspectClass} rounded-lg overflow-hidden flex items-center justify-center bg-slate-50`}>
+            {imgLoading && !imgLoadError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-5">
+                <Loader2 size={20} className="animate-spin text-slate-400" />
+              </div>
+            )}
+            {imgLoadError ? (
+              <div className="flex flex-col items-center justify-center p-4 text-center text-slate-400 gap-1.5 select-none">
+                <div className="w-10 h-10 rounded-xl bg-slate-200/80 flex items-center justify-center text-slate-500">
+                  <ImageIcon size={20} />
+                </div>
+                <span className="text-xs font-bold text-slate-700">Image Preview Unavailable</span>
+                <span className="text-[10px] text-slate-400 font-mono max-w-[200px] truncate" title={value}>
+                  {value}
+                </span>
+              </div>
+            ) : (
+              <img
+                src={value}
+                alt={label || 'Uploaded Preview'}
+                className={`w-full h-full object-contain transition duration-300 group-hover:scale-102 ${
+                  imgLoading ? 'opacity-0' : 'opacity-100'
+                }`}
+                onLoad={() => setImgLoading(false)}
+                onError={() => {
+                  setImgLoading(false);
+                  setImgLoadError(true);
+                }}
+              />
+            )}
           </div>
 
           {/* Action overlay */}
-          <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-4">
+          <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-all flex flex-wrap items-center justify-center content-center gap-2 p-3 z-10 backdrop-blur-2xs">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 bg-white text-slate-900 text-xs font-bold rounded-lg shadow-sm hover:bg-slate-100 whitespace-nowrap shrink-0 transition cursor-pointer"
+              className="h-8 px-3 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl shadow-sm transition cursor-pointer"
             >
               <RefreshCw size={13} />
               <span>Replace</span>
             </button>
             <button
               type="button"
-              onClick={handleCopyUrl}
-              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-slate-700 whitespace-nowrap shrink-0 transition cursor-pointer"
-              title="Copy Image URL"
+              onClick={() => setMediaModalOpen(true)}
+              className="h-8 px-3 inline-flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer"
             >
-              {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-              <span>{copied ? 'Copied' : 'Copy URL'}</span>
+              <Layers size={13} />
+              <span>Library</span>
             </button>
             <button
               type="button"
+              onClick={handleCopyUrl}
+              className="w-8 h-8 inline-flex items-center justify-center bg-white/90 hover:bg-white text-slate-800 rounded-xl shadow-sm transition cursor-pointer"
+              title="Copy URL"
+            >
+              {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+            </button>
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="w-8 h-8 inline-flex items-center justify-center bg-white/90 hover:bg-white text-slate-800 rounded-xl shadow-sm transition cursor-pointer"
+              title="Open original image"
+            >
+              <ExternalLink size={14} />
+            </a>
+            <button
+              type="button"
               onClick={() => onChange('')}
-              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm whitespace-nowrap shrink-0 transition cursor-pointer"
-              title="Remove Image"
+              className="h-8 px-3 inline-flex items-center justify-center gap-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer"
+              title="Remove image"
             >
               <X size={13} />
               <span>Remove</span>
             </button>
           </div>
-
-          <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-md truncate font-mono">
-            {value}
-          </div>
         </div>
       ) : (
-        /* When No Value: Show Upload Box or URL Input */
+        /* Empty State: Uploader or URL Input */
         <div className="space-y-2">
           {mode === 'upload' ? (
             <div
@@ -253,10 +337,11 @@ export default function ImageUpload({
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${dragActive
+              className={`relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
+                dragActive
                   ? 'border-[#C62828] bg-rose-50/50 scale-[0.99]'
-                  : 'border-slate-200 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-50'
-                }`}
+                  : 'border-slate-200 bg-slate-50/60 hover:bg-slate-50 hover:border-slate-300'
+              }`}
             >
               <input
                 ref={fileInputRef}
@@ -267,10 +352,10 @@ export default function ImageUpload({
               />
 
               {isUploading ? (
-                <div className="py-4 space-y-3">
-                  <Loader2 size={28} className="mx-auto text-[#C62828] animate-spin" />
-                  <p className="text-xs font-bold text-slate-700">Uploading image to server...</p>
-                  <div className="w-48 mx-auto bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div className="space-y-2 py-4">
+                  <Loader2 size={24} className="animate-spin text-[#C62828] mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">Uploading &amp; cataloging with tags...</p>
+                  <div className="w-48 bg-slate-200 h-1.5 rounded-full overflow-hidden mx-auto">
                     <div
                       className="bg-[#C62828] h-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
@@ -278,31 +363,30 @@ export default function ImageUpload({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2 py-2">
-                  <div className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-2xs flex items-center justify-center mx-auto text-[#C62828]">
-                    <UploadCloud size={20} />
+                <>
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-slate-600 shadow-2xs">
+                    <UploadCloud size={22} className="text-[#C62828]" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-800">
-                      Click to upload image{' '}
-                    </span>
-                    <span className="text-xs text-slate-500">or drag & drop</span>
+                    <p className="text-xs font-bold text-slate-800">
+                      Click to upload or drag &amp; drop
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{description}</p>
                   </div>
-                  <p className="text-[11px] text-slate-400">{description}</p>
-                </div>
+                </>
               )}
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex gap-2">
+            <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <LinkIcon size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                  <LinkIcon className="absolute left-3 top-2.5 text-slate-400" size={14} />
                   <input
                     type="url"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://images.unsplash.com/... or image direct link"
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828]"
+                    className="w-full text-xs bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828]"
                   />
                 </div>
                 <button
@@ -325,6 +409,93 @@ export default function ImageUpload({
               <X size={12} /> {error}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Mandatory Tagging Modal for ImageUpload */}
+      {showTagModal && stagedFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-[#C62828]">
+                  <Tag size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Tag Uploaded Image</h3>
+                  <p className="text-[11px] text-slate-400">Tags are required to categorize and search for images in the library.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTagModal(false);
+                  setStagedFile(null);
+                }}
+                className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Preview */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <div className="w-16 h-16 rounded-xl bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={stagedPreview} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+              <div className="space-y-1 overflow-hidden flex-1">
+                <p className="text-xs font-bold text-slate-800 truncate">{stagedFile.name}</p>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  {Math.round(stagedFile.size / 1024)} KB • {stagedFile.name.split('.').pop()?.toUpperCase()}
+                </p>
+                <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 inline-block">
+                  Folder: {folder}
+                </span>
+              </div>
+            </div>
+
+            {/* Mandatory Tag Input */}
+            <MediaTagInput
+              tags={stagedTags}
+              onChange={setStagedTags}
+              required={true}
+              label="Category Tags (Minimum 1 required)"
+              placeholder="Type a tag and press Enter (e.g., cover, apple, anker...)"
+              helperText="Image will be automatically saved to the Media Library with these tags."
+            />
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTagModal(false);
+                  setStagedFile(null);
+                }}
+                disabled={isUploading}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmUpload}
+                disabled={stagedTags.length === 0 || isUploading}
+                className="px-5 py-2.5 bg-[#C62828] hover:bg-[#B71C1C] disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} /> Complete Upload &amp; Save ({stagedTags.length} {stagedTags.length === 1 ? 'tag' : 'tags'})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

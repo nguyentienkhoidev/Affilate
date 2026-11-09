@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset bargorya:002-seed-permissions
+-- changeset heygoodly:002-seed-permissions
 INSERT INTO permissions (module, action, code, name, description) VALUES
 ('Auth', 'access', 'backend.access', 'Access Backend', 'Permission to log into ProCMS administration panel'),
 ('Category', 'view', 'category.view', 'View Categories', 'Permission to view category list'),
@@ -51,7 +51,7 @@ INSERT INTO permissions (module, action, code, name, description) VALUES
 ('Setting', 'ads', 'setting.ads', 'Ads Banners', 'Permission to configure advertising slots and banners')
 ON CONFLICT (code) DO NOTHING;
 
--- changeset bargorya:003-seed-roles
+-- changeset heygoodly:003-seed-roles
 INSERT INTO roles (name, slug, description, is_system) VALUES
 ('Administrator', 'admin', 'Super administrator with full system privileges', true),
 ('Staff', 'staff', 'Default operational staff role for content and deals management', true)
@@ -77,20 +77,33 @@ WHERE r.slug = 'staff' AND p.code IN (
 )
 ON CONFLICT DO NOTHING;
 
--- changeset bargorya:004-seed-admin-user
--- Default password: Admin@123456 (BCrypt: $2a$10$wNq2756jLZe8iVjWc2W1uefG1jI3a9rM8h6V2C9vVj2K5l3Q0tB8m)
+-- changeset heygoodly:004-seed-admin-user
+-- Default password: Admin@123456 (BCrypt: $2a$10$iHBI1Z3Ct6bAfg7J0F7MReNPPg9Y5R.z9TTaAElmi40ck2EclOCzm)
 INSERT INTO users (role_id, full_name, email, password_hash, is_super_admin, is_active, created_by)
-SELECT r.id, 'System Administrator', 'admin@bargorya.com', '$2a$10$3zQxM4z3L2WbKx5i0f0eDu1GZ7q7yJt0rG3C5.6W8g.0qK8a6m9E6', true, true, 'system'
+SELECT r.id, 'System Administrator', 'admin@heygoodly.com', '$2a$10$iHBI1Z3Ct6bAfg7J0F7MReNPPg9Y5R.z9TTaAElmi40ck2EclOCzm', true, true, 'system'
 FROM roles r WHERE r.slug = 'admin'
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
--- changeset bargorya:005-seed-system-settings
-INSERT INTO system_settings (setting_key, setting_value) VALUES
-('site_name', 'Bargorya'),
-('site_slogan', 'Smart News & Hot Deals - Save More Daily'),
-('no_index', 'false'),
-('search_store_enabled', 'true'),
-('footer_copyright', '© 2026 Bargorya. All rights reserved.'),
-('meta_title', 'Bargorya - Latest Deals, Verified Coupons & Shopping Reviews 2026'),
-('meta_description', 'Discover verified promo codes, discounts, exclusive deals, and honest shopping reviews to save more every day.')
-ON CONFLICT (setting_key) DO NOTHING;
+-- Seed Sarah Jenkins editor with 2FA enabled (Password: HeyGoodly@2026)
+INSERT INTO users (role_id, full_name, email, password_hash, is_super_admin, is_active, two_factor_enabled, two_factor_secret, two_factor_recovery_codes, created_by)
+SELECT r.id, 'Sarah Jenkins', 'sarah@heygoodly.com', '$2a$10$Dk3xoedHPEx4FhEjKpwv0OxOQoXWKDBz3d.DSw7hUWm7aAnx7nmMW', false, true, true, 'JBSWY3DPEHPK3PXP', '["8A41-92F0","B234-C567","D890-E123","F456-A789"]'::jsonb, 'system'
+FROM roles r WHERE r.slug = 'staff'
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, two_factor_enabled = true, two_factor_secret = 'JBSWY3DPEHPK3PXP';
+
+-- changeset heygoodly:005-seed-system-settings
+INSERT INTO system_settings (setting_key, setting_value, category) VALUES
+('site_name', 'HeyGoodly', 'general'),
+('site_slogan', 'Smart News & Hot Deals - Save More Daily', 'general'),
+('no_index', 'false', 'general'),
+('search_store_enabled', 'true', 'general'),
+('footer_copyright', '© 2026 HeyGoodly. All rights reserved.', 'general'),
+('meta_title', 'HeyGoodly - Latest Deals, Verified Coupons & Shopping Reviews 2026', 'general'),
+('meta_description', 'Discover verified promo codes, discounts, exclusive deals, and honest shopping reviews to save more every day.', 'general'),
+('two_factor_issuer', 'HeyGoodlyProCMS', 'security'),
+('two_factor_window_size', '3', 'security'),
+('two_factor_dev_bypass_enabled', 'true', 'security'),
+('two_factor_dev_otp', '884219', 'security'),
+('two_factor_dev_recovery_code', '8A41-92F0', 'security'),
+('auth_max_failed_attempts', '5', 'security'),
+('auth_lockout_seconds', '30', 'security')
+ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, category = EXCLUDED.category;

@@ -1,6 +1,6 @@
 # TÀI LIỆU ĐẶC TẢ YÊU CẦU PHẦN MỀM (SRS)
 ## HỆ THỐNG CỔNG TIN TỨC & TIẾP THỊ LIÊN KẾT (AFFILIATE NEWS & COUPON PORTAL)
-*(Chuẩn hóa theo kiến trúc website mẫu Bargorya & hệ thống quản trị ProCMS)*
+*(Chuẩn hóa theo kiến trúc website mẫu HeyGoodly & hệ thống quản trị ProCMS)*
 
 ---
 
@@ -157,7 +157,7 @@ Hệ thống không áp đặt cứng danh sách các vai trò nhân sự mà tr
     * Tự động kích hoạt cơ chế dự phòng `document.execCommand('copy')` với textarea ẩn khi chạy trong các môi trường Webview ngặt nghèo của iOS/Android, đảm bảo 100% người dùng bấm là sao chép thành công.
 
 - [ ] **FE-STORE-10 (Thẻ chia sẻ Mạng xã hội động - Dynamic Open Graph / Twitter Card per Store):**
-  - [ ] Khi link Store (ví dụ: `https://bargorya.com/store/nilight-store`) được dán vào bài viết Facebook, tin nhắn Messenger, Zalo, Twitter/X, Telegram, Discord, Pinterest... hệ thống tự động sinh bản xem trước (Social Card Preview) cực kỳ bắt mắt:
+  - [ ] Khi link Store (ví dụ: `https://heygoodly.com/store/nilight-store`) được dán vào bài viết Facebook, tin nhắn Messenger, Zalo, Twitter/X, Telegram, Discord, Pinterest... hệ thống tự động sinh bản xem trước (Social Card Preview) cực kỳ bắt mắt:
     * `og:title`: Tự động tạo tiêu đề giật tít thu hút click: *"[Store Name] Coupons & Promo Codes 2026 - Verified Up to [Max Discount]% Off"*.
     * `og:description`: Lời kêu gọi hành động: *"Get verified discount codes and exclusive deals for [Store Name]. Tap to copy code and save today!"*.
     * `og:image`: Ảnh preview kích thước chuẩn 1200x630 hiển thị rõ nét: Logo Store trên nền thương hiệu + Badge mức giảm giá cao nhất (ví dụ: *Save 10% Off*) + Huy hiệu *Verified Deals*.
@@ -432,7 +432,7 @@ Hệ thống triển khai mô hình phân quyền chuẩn RBAC (Role-Based Acces
 
 ### 3.10. Cài đặt Hệ thống (System Settings - Ảnh 24, 25, 26, 27, 28)
 - [ ] **BE-SET-01 (Cấu hình chung - General Settings):**
-  - [ ] `Site name`: Tên trang web (ví dụ: `Bargorya`).
+  - [ ] `Site name`: Tên trang web (ví dụ: `HeyGoodly`).
   - [ ] `Slogan`: Khẩu hiệu trang web (ví dụ: `Smart News & Hot Deals - Save More Daily`).
   - [ ] `Logo`: Ảnh logo hiển thị trên Header (cho phép chọn từ thư viện ảnh).
   - [ ] `Logo Footer`: Ảnh logo phiên bản hiển thị tại chân trang.
@@ -700,7 +700,7 @@ Hệ thống được thiết kế theo các tiêu chuẩn kỹ thuật SEO kh�
   - [ ] Các URL lọc faceted (`?sort=...`, `?filter=...`) tự động canonical về URL gốc của Store.
 
 - [ ] **NFR-SEO-11 (Tiêu Chuẩn E-E-A-T & Cơ Chế Kiểm Duyệt Thực Tế - Tested Badges):**
-  - [ ] Gắn huy hiệu kiểm duyệt *"Verified & Tested on [Today] by Bargorya Team"* kèm tỷ lệ thành công (Success Rate) và nút biểu quyết tính khả dụng.
+  - [ ] Gắn huy hiệu kiểm duyệt *"Verified & Tested on [Today] by HeyGoodly Team"* kèm tỷ lệ thành công (Success Rate) và nút biểu quyết tính khả dụng.
   - [ ] Trang thông tin tác giả có liên kết mạng xã hội chính chủ (LinkedIn/Twitter) với Schema `Person` (`sameAs`).
   - [ ] Trang chính sách minh bạch bắt buộc: `/editorial-guidelines`, `/affiliate-disclosure`, `/how-we-rate`.
 *(Chi tiết xem toàn bộ tài liệu chuyên sâu: [CHIEN_LUOC_TOI_UU_SEO_CHUYEN_SAU.md](file:///Users/khoinguyen/Documents/Affilate/CHIEN_LUOC_TOI_UU_SEO_CHUYEN_SAU.md))*

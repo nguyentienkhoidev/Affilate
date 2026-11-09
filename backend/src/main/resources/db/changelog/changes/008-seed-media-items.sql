@@ -1,0 +1,19 @@
+-- liquibase formatted sql
+-- changeset heygoodly:008-seed-media-items splitStatements:true endDelimiter:;
+
+INSERT INTO media_items (id, name, object_key, bucket, url, category, size_bytes, mime_type, dimensions, tags, uploaded_by, created_at, updated_at)
+VALUES
+(1, 'nilight-hero-banner.webp', 'stores/nilight-hero-banner.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=1200&q=80', 'stores', 145408, 'image/webp', '1200 x 630', '["headlights", "nilight", "banner", "automotive", "stores"]'::jsonb, 1, '2026-10-23 08:00:00Z', '2026-10-23 08:00:00Z'),
+(2, 'neo-sabers-combat.webp', 'articles/neo-sabers-combat.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80', 'articles', 189440, 'image/webp', '1200 x 720', '["lightsaber", "neo sabers", "review", "collectibles", "articles"]'::jsonb, 1, '2026-10-22 09:30:00Z', '2026-10-22 09:30:00Z'),
+(3, 'auxito-led-headlights.webp', 'stores/auxito-led-headlights.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=800&q=80', 'stores', 100352, 'image/webp', '800 x 800', '["auxito", "led", "accessories", "stores", "automotive"]'::jsonb, 1, '2026-10-21 11:15:00Z', '2026-10-21 11:15:00Z'),
+(4, 'anker-charger-review.webp', 'articles/anker-charger-review.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=1200&q=80', 'articles', 215040, 'image/webp', '1280 x 720', '["anker", "charger", "accessories", "tech", "review", "articles"]'::jsonb, 1, '2026-10-20 14:00:00Z', '2026-10-20 14:00:00Z'),
+(5, 'header-ads-728x90.webp', 'banners/header-ads-728x90.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=728&h=90&fit=crop&q=80', 'banners', 46080, 'image/webp', '728 x 90', '["banner", "ads", "deals", "affiliate"]'::jsonb, 1, '2026-10-19 16:45:00Z', '2026-10-19 16:45:00Z'),
+(6, 'tech-gadgets-collection.webp', 'articles/tech-gadgets-collection.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80', 'articles', 179200, 'image/webp', '1200 x 800', '["tech", "gadgets", "collection", "review", "products"]'::jsonb, 1, '2026-10-18 10:20:00Z', '2026-10-18 10:20:00Z'),
+(7, 'apple-silicon-m3.webp', 'articles/apple-silicon-m3.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1200&q=80', 'articles', 196608, 'image/webp', '1200 x 800', '["apple", "macbook", "m3", "laptop", "tech", "review"]'::jsonb, 1, '2026-10-17 13:10:00Z', '2026-10-17 13:10:00Z'),
+(8, 'sony-wh1000xm5.webp', 'articles/sony-wh1000xm5.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80', 'articles', 117760, 'image/webp', '800 x 800', '["headphones", "sony", "xm5", "audio", "review", "featured"]'::jsonb, 1, '2026-10-16 15:40:00Z', '2026-10-16 15:40:00Z'),
+(9, 'brand-logo-dark.webp', 'icons/brand-logo-dark.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=500&q=80', 'icons', 32768, 'image/webp', '512 x 512', '["logo", "brand", "icon", "branding"]'::jsonb, 1, '2026-10-15 09:00:00Z', '2026-10-15 09:00:00Z'),
+(10, 'cyber-monday-promo.webp', 'banners/cyber-monday-promo.webp', 'heygoodly-media', 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1200&q=80', 'banners', 233472, 'image/webp', '1200 x 600', '["cyber monday", "sale", "banner", "deals", "promo"]'::jsonb, 1, '2026-10-14 12:00:00Z', '2026-10-14 12:00:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('media_items_id_seq', (SELECT COALESCE(MAX(id), 1) FROM media_items));
+

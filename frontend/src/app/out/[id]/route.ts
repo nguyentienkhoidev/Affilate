@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mockCoupons from '@/lib/data/mock-coupons.json';
-import mockStores from '@/lib/data/mock-stores.json';
-
-const fallbackRedirects: Record<string, string> = {
-  '1': 'https://www.nilight.com/?pb_ref=bargorya',
-  '2': 'https://neosabers.com/?ref=bargorya',
-  '3': 'https://auxito.com/?impact_ref=bargorya',
-  '4': 'https://www.anker.com/?cj_ref=bargorya',
-  '101': 'https://www.nilight.com/?pb_ref=bargorya',
-  '102': 'https://auxito.com/?impact_ref=bargorya',
-  '103': 'https://www.nilight.com/collections/clearance?pb_ref=bargorya',
-  '104': 'https://www.lasfit.com/?ref=bargorya',
-};
+import { ROUTES } from '@/constants/routes';
 
 export async function GET(
   request: NextRequest,
@@ -19,29 +7,41 @@ export async function GET(
 ) {
   const { id } = await params;
   const targetId = id.trim();
+  const backendBase =
+    process.env.BACKEND_INTERNAL_URL ||
+    (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080').replace(/\/api\/v1\/?$/, '');
 
-  // 1. Find coupon by id
-  const matchedCoupon = (mockCoupons as any[]).find(
-    (c) => String(c.id) === targetId || String(c.id).includes(targetId)
-  );
+  let destination: string | null = null;
 
-  let destination = fallbackRedirects[targetId];
+  try {
+    const backendRes = await fetch(`${backendBase}/out/${encodeURIComponent(targetId)}`, {
+      method: 'GET',
+      redirect: 'manual',
+      cache: 'no-store',
+    });
 
-  if (!destination && matchedCoupon) {
-    // Look up store affiliateUrl
-    const matchedStore = (mockStores as any[]).find(
-      (s) => s.slug?.toLowerCase() === matchedCoupon.storeSlug?.toLowerCase()
-    );
-    destination = matchedStore?.affiliateUrl || matchedStore?.websiteUrl;
+    const location = backendRes.headers.get('location');
+    if (location) {
+      destination = location;
+    }
+  } catch {
+    // Fall back to stores directory if backend redirect cannot resolve
   }
 
   if (!destination) {
-    destination = 'https://bargorya.com/stores';
+    const fallbackUrl = new URL(ROUTES.PUBLIC.STORES, request.url);
+    return new NextResponse(null, {
+      status: 307,
+      headers: {
+        Location: fallbackUrl.toString(),
+        'X-Robots-Tag': 'noindex, nofollow, noarchive',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   }
 
-  // 2. Forward incoming UTM and sub-id parameters
   const incomingUrl = new URL(request.url);
-  const targetUrl = new URL(destination);
+  const targetUrl = new URL(destination, request.url);
   incomingUrl.searchParams.forEach((value, key) => {
     targetUrl.searchParams.set(key, value);
   });

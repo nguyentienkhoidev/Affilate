@@ -2,6 +2,12 @@
 .DS_Store
 Thumbs.db
 
+# Environment Files
+.env
+.env.*
+!.env.example
+!.env.site.example
+
 # Backend Build & IDE
 backend/target/
 backend/.mvn/
@@ -24,7 +30,7 @@ frontend/yarn-error.log*
 
 # Uploads & Storage
 uploads/
-/var/www/bargorya/uploads/
+/var/www/heygoodly/uploads/
 
 # Docker volumes
 postgres_data/

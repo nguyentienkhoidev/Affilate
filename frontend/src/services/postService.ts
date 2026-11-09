@@ -1,16 +1,18 @@
 import { apiClient } from '@/lib/api/axios-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import { Article } from '@/types/deals';
-import mockArticlesData from '@/lib/data/mock-articles.json';
+import { Article, ArticleSidebarConfig } from '@/types/deals';
 
 export interface PostFilterParams {
   page?: number;
   size?: number;
-  categoryId?: number;
-  categorySlug?: string;
+  categoryId?: number | number[];
+  categorySlug?: string | string[];
+  category?: string | string[];
+  storeSlug?: string;
+  featured?: boolean;
   search?: string;
   sortBy?: 'newest' | 'popular';
-  tag?: string;
+  tag?: string | string[];
 }
 
 export interface PaginatedPostsResult {
@@ -21,166 +23,194 @@ export interface PaginatedPostsResult {
   totalPages: number;
 }
 
-// Convert Spring Boot PostSummaryResponse to Frontend Article interface if needed
-function mapBackendPostToArticle(post: Record<string, unknown>): Article {
-  const publishedAtStr = post.publishedAt as string | undefined;
+export function mapBackendPostToArticle(p: any): Article {
+  const img = typeof (p.image ?? p.imageUrl) === 'string' ? String(p.image ?? p.imageUrl).trim() : '';
+
+  let parsedTags: string[] = [];
+  if (Array.isArray(p.tags)) {
+    parsedTags = p.tags.map((t: unknown) => String(t).trim()).filter(Boolean);
+  } else if (typeof p.tags === 'string' && p.tags.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(p.tags);
+      if (Array.isArray(parsed)) {
+        parsedTags = parsed.map((t: unknown) => String(t).trim()).filter(Boolean);
+      } else {
+        parsedTags = p.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    } catch {
+      parsedTags = p.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }
+  } else if (typeof p.metaKeywords === 'string' && p.metaKeywords.trim().length > 0) {
+    parsedTags = p.metaKeywords.split(/[,;]+/).map((t: string) => t.trim()).filter(Boolean);
+  }
+
+  let formattedDate = '';
+  if (p.publishedAt) {
+    try {
+      formattedDate = new Date(p.publishedAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      formattedDate = String(p.publishedAt).split('T')[0];
+    }
+  }
+
+  const rawRating = p.rating ?? p.ratingScore;
+  const ratingStr =
+    rawRating !== null && rawRating !== undefined && String(rawRating).trim() !== ''
+      ? Number(rawRating).toFixed(1).replace(/\.0$/, '.0')
+      : undefined;
+
+  let sidebarConfig: ArticleSidebarConfig | undefined;
+  if (p.sidebarConfig && typeof p.sidebarConfig === 'object') {
+    sidebarConfig = p.sidebarConfig as ArticleSidebarConfig;
+  } else if (typeof p.sidebarConfig === 'string' && p.sidebarConfig.trim()) {
+    try {
+      sidebarConfig = JSON.parse(p.sidebarConfig) as ArticleSidebarConfig;
+    } catch {
+      sidebarConfig = undefined;
+    }
+  }
+
   return {
-    id: String(post.id),
-    slug: String(post.slug || ''),
-    title: String(post.title || ''),
-    excerpt: String(post.excerpt || ''),
-    content: String(post.content || ''),
-    category: String(post.categoryName || 'General'),
+    id: String(p.id),
+    slug: String(p.slug || ''),
+    title: String(p.title || ''),
+    excerpt: String(p.excerpt || ''),
+    content: p.content !== undefined && p.content !== null ? String(p.content) : undefined,
+    categoryId: p.categoryId ? Number(p.categoryId) : undefined,
+    category: String(p.categoryName || p.category || 'Editorial'),
+    categorySlug: p.categorySlug ? String(p.categorySlug) : undefined,
+    storeId: p.storeId ? Number(p.storeId) : undefined,
+    storeSlug: p.storeSlug ? String(p.storeSlug) : undefined,
+    storeName: p.storeName ? String(p.storeName) : undefined,
     author: {
-      name: String(post.authorName || 'Bargorya Staff'),
-      avatar: String(post.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'),
-      role: 'Staff Writer'
+      name: String(p.authorName || 'Editorial Team'),
+      role: String(p.authorRole || 'Editorial Desk'),
+      avatar: typeof p.authorAvatar === 'string' ? p.authorAvatar.trim() : '',
+      bio: typeof p.authorBio === 'string' ? p.authorBio.trim() : undefined,
     },
-    publishedAt: publishedAtStr ? new Date(publishedAtStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
-    readTime: String(post.readTime || '6 min read'),
-    imageUrl: String(post.image || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80'),
-    featured: Boolean(post.isFeatured),
-    tags: Array.isArray(post.tags) ? (post.tags as string[]) : [],
-    storeSlug: post.storeSlug ? String(post.storeSlug) : undefined,
-    storeName: post.storeName ? String(post.storeName) : undefined,
+    publishedAt: formattedDate,
+    publishedIso: p.publishedAt ? String(p.publishedAt) : undefined,
+    readTime: String(p.readTime || '5 min read'),
+    imageUrl: img,
+    featured: Boolean(p.isFeatured ?? p.featured),
+    tags: parsedTags,
+    rating: ratingStr,
+    viewCount: Number(p.viewCount ?? 0),
+    metaTitle: p.metaTitle ? String(p.metaTitle) : undefined,
+    metaDescription: p.metaDescription ? String(p.metaDescription) : undefined,
+    canonicalUrl: p.canonicalUrl ? String(p.canonicalUrl) : undefined,
+    sidebarConfig,
   };
 }
 
 class PostService {
   /**
-   * Fetch articles with filtering and pagination.
-   * Prioritizes backend API; automatically falls back to Mock JSON if offline.
+   * Fetch articles with filtering and pagination directly from PostgreSQL database.
    */
   async getPosts(params: PostFilterParams = {}): Promise<PaginatedPostsResult> {
     const page = params.page || 1;
     const size = params.size || 6;
 
     try {
-      // 1. Try real backend API
       const res = await apiClient.get(API_ENDPOINTS.PUBLIC.POSTS, {
         params: {
-          page: page - 1, // Spring Boot 0-indexed
+          page: page - 1,
           size,
           categoryId: params.categoryId,
-          search: params.search,
+          categorySlug: Array.isArray(params.categorySlug)
+            ? (params.categorySlug.length > 0 ? params.categorySlug.join(',') : undefined)
+            : (params.categorySlug && params.categorySlug.toLowerCase() !== 'all' ? params.categorySlug : undefined),
+          category: Array.isArray(params.category)
+            ? (params.category.length > 0 ? params.category.join(',') : undefined)
+            : (params.category && params.category.toLowerCase() !== 'all' ? params.category : undefined),
+          storeSlug: params.storeSlug || undefined,
+          featured: params.featured,
+          search: params.search || undefined,
+          tag: Array.isArray(params.tag)
+            ? (params.tag.length > 0 ? params.tag.join(',') : undefined)
+            : (params.tag && params.tag.toLowerCase() !== 'all' ? params.tag : undefined),
           sortBy: params.sortBy === 'popular' ? 'viewCount' : 'publishedAt',
+          direction: 'desc',
         },
-        timeout: 2500, // Fast timeout if backend is not running
+        timeout: 8000,
       });
 
-      if (res.data?.data?.items) {
-        const pageData = res.data.data;
+      const pageData = res.data?.data;
+      const content = pageData?.content || pageData?.items || (Array.isArray(pageData) ? pageData : null);
+
+      if (content && Array.isArray(content)) {
+        const total = Number(pageData.totalElements ?? pageData.totalItems ?? content.length);
+        const totalPages = Math.max(1, Number(pageData.totalPages ?? Math.ceil(total / size)));
         return {
-          items: pageData.items.map(mapBackendPostToArticle),
-          total: pageData.totalItems || pageData.items.length,
+          items: content.map(mapBackendPostToArticle),
+          total,
           page,
           size,
-          totalPages: pageData.totalPages || Math.ceil(pageData.items.length / size),
+          totalPages,
         };
       }
-    } catch {
-      // 2. Seamless fallback to Mock JSON data
+    } catch (err) {
+      console.warn('Failed to fetch public posts from backend API:', err);
     }
-
-    // Filter and paginate on Mock JSON
-    let filtered = [...(mockArticlesData as Article[])];
-
-    if (params.categorySlug && params.categorySlug !== 'all') {
-      const slugLower = params.categorySlug.toLowerCase();
-      filtered = filtered.filter(a => 
-        a.category.toLowerCase().includes(slugLower) ||
-        a.tags.some(t => t.toLowerCase().includes(slugLower)) ||
-        (slugLower === 'tech' && a.category.toLowerCase().includes('hardware'))
-      );
-    }
-
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(a => 
-        a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q)
-      );
-    }
-
-    if (params.tag) {
-      const tagLower = params.tag.toLowerCase().replace(/-/g, ' ').trim();
-      const matched = filtered.filter(a => 
-        a.tags.some(t => {
-          const tLower = t.toLowerCase().replace(/-/g, ' ').trim();
-          return tLower.includes(tagLower) || tagLower.includes(tLower);
-        }) ||
-        a.title.toLowerCase().includes(tagLower) ||
-        a.category.toLowerCase().includes(tagLower) ||
-        a.excerpt.toLowerCase().includes(tagLower)
-      );
-      if (matched.length > 0) {
-        filtered = matched;
-      }
-    }
-
-    // Sort order
-    if (params.sortBy === 'newest') {
-      filtered.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-    }
-
-    const total = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(total / size));
-    const items = filtered.slice((page - 1) * size, page * size);
 
     return {
-      items,
-      total,
+      items: [],
+      total: 0,
       page,
       size,
-      totalPages,
+      totalPages: 1,
     };
   }
 
   /**
-   * Fetch featured hero article
+   * Fetch featured hero article from database
    */
-  async getFeaturedArticle(): Promise<Article> {
+  async getFeaturedArticle(): Promise<Article | null> {
     try {
-      const res = await apiClient.get('/api/v1/public/posts/featured', { timeout: 2000 });
-      if (res.data?.data?.[0]) {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.POSTS_FEATURED, { timeout: 8000 });
+      if (Array.isArray(res.data?.data) && res.data.data.length > 0) {
         return mapBackendPostToArticle(res.data.data[0]);
       }
+      const pageRes = await this.getPosts({ size: 1 });
+      return pageRes.items[0] || null;
     } catch {
-      // fallback
+      return null;
     }
-    const articles = mockArticlesData as Article[];
-    return articles.find(a => a.featured) || articles[0];
   }
 
   /**
-   * Fetch Editor's Picks list
+   * Fetch Editor's Picks list from database
    */
   async getEditorPicks(): Promise<Article[]> {
     try {
-      const res = await apiClient.get('/api/v1/public/posts/editor-picks', { timeout: 2000 });
-      if (res.data?.data?.length) {
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.POSTS_EDITOR_PICKS, { timeout: 8000 });
+      if (Array.isArray(res.data?.data)) {
         return res.data.data.map(mapBackendPostToArticle);
       }
     } catch {
-      // fallback
+      // Return empty array cleanly on error
     }
-    const articles = mockArticlesData as Article[];
-    return articles.slice(3, 7);
+    return [];
   }
 
   /**
-   * Fetch article detail by slug
+   * Fetch article detail by slug from database
    */
   async getPostBySlug(slug: string): Promise<Article | null> {
+    if (!slug || !slug.trim()) return null;
     try {
-      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.POST_DETAIL(slug), { timeout: 2000 });
+      const res = await apiClient.get(API_ENDPOINTS.PUBLIC.POST_DETAIL(slug.trim()), { timeout: 8000 });
       if (res.data?.data) {
         return mapBackendPostToArticle(res.data.data);
       }
     } catch {
-      // fallback
+      // 404 or offline -> return null cleanly
     }
-    const articles = mockArticlesData as Article[];
-    return articles.find(a => a.slug === slug) || null;
+    return null;
   }
 }
 

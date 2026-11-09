@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -15,139 +15,253 @@ import {
   XCircle,
   Copy,
   Tag,
-  Check,
   Globe,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Eye,
 } from 'lucide-react';
 import Pagination from '@/components/admin/Pagination';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminFilterBar from '@/components/admin/AdminFilterBar';
+import AdminTableShell from '@/components/admin/AdminTableShell';
+import AdminActionButton from '@/components/admin/AdminActionButton';
+import { adminSelectClass, adminSearchInputClass } from '@/components/admin/adminStyles';
 import { ROUTES } from '@/constants/routes';
-import { STORES_STORE_KEY, DEFAULT_STORES, type AdminStore } from './_lib/data';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { apiClient } from '@/lib/api/axios-client';
+import storeService from '@/services/storeService';
+import { type AdminStore } from './_lib/data';
+import StoreOffersModal from './_components/StoreOffersModal';
 import { usePermission } from '@/lib/admin/usePermission';
-import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { useServerPagination } from '@/lib/admin/useServerPagination';
+import { useToast } from '@/context/ToastContext';
 import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
+
+type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'FEATURED';
+type SortBy = 'name-asc' | 'rating-desc' | 'coupons-desc' | 'clicks-desc';
+
+interface CategoryOption {
+  id: number;
+  name: string;
+}
+
+// Global memory cache to prevent duplicate category list API calls across tab switches
+let cachedCategories: CategoryOption[] | null = null;
+let categoriesPromise: Promise<CategoryOption[]> | null = null;
+
+async function fetchCategoriesCached(): Promise<CategoryOption[]> {
+  if (cachedCategories && cachedCategories.length > 0) {
+    return cachedCategories;
+  }
+  if (categoriesPromise) {
+    return categoriesPromise;
+  }
+  categoriesPromise = apiClient
+    .get(API_ENDPOINTS.ADMIN.CATEGORIES, { params: { size: 100 } })
+    .then((res) => {
+      const list = res.data?.data?.content || res.data?.data;
+      if (Array.isArray(list)) {
+        cachedCategories = list.map((c: any) => ({
+          id: Number(c.id),
+          name: String(c.name),
+        }));
+        return cachedCategories;
+      }
+      return [];
+    })
+    .catch(() => [])
+    .finally(() => {
+      categoriesPromise = null;
+    });
+  return categoriesPromise;
+}
+
+const TABLE_COLUMNS = [
+  { label: 'Merchant Brand' },
+  { label: 'Category' },
+  { label: 'Coupons & Deals' },
+  { label: 'Rating' },
+  { label: 'Status' },
+  { label: 'Actions', className: 'text-right w-48 min-w-[192px]' },
+];
 
 export default function AdminStoresPage() {
   const { hasPermission } = usePermission();
-  const { items: stores, create, remove } = useAdminCollection<AdminStore>(STORES_STORE_KEY, DEFAULT_STORES);
+  const { toast, confirm: confirmModal } = useToast();
+
+  const [selectedStoreForOffers, setSelectedStoreForOffers] = useState<AdminStore | null>(null);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [sortBy, setSortBy] = useState<SortBy>('name-asc');
+  const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(() => cachedCategories || []);
+
+  const loadCategories = useCallback(async () => {
+    if (availableCategories.length > 0) return;
+    const cats = await fetchCategoriesCached();
+    if (cats && cats.length > 0) {
+      setAvailableCategories(cats);
+    }
+  }, [availableCategories.length]);
+
+  const {
+    items: pagedItems,
+    loading: isLoading,
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    setCurrentPage,
+    setPageSize,
+    setParam,
+    refresh: refreshStores,
+  } = useServerPagination<AdminStore>({
+    endpoint: API_ENDPOINTS.ADMIN.STORES,
+    defaultPageSize: 10,
+    initialParams: {
+      search: '',
+      status: undefined,
+      sortBy: 'name',
+      direction: 'asc',
+    },
+    mapItem: (s: any): AdminStore => ({
+      id: String(s.id),
+      name: String(s.name),
+      slug: String(s.slug),
+      domain: s.afWebsite
+        ? s.afWebsite.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '')
+        : (s.domain || `${s.slug}.com`),
+      logoUrl: s.logo || s.logoUrl,
+      categoryId: s.categoryId ? Number(s.categoryId) : undefined,
+      category: s.categoryName || s.category || 'General',
+      rating: Number(s.ratingScore ?? 4.8),
+      reviewsCount: Number(s.ratingCount ?? 0),
+      activeCoupons: Number(s.activeOffersCount ?? 0),
+      maxDiscount: s.maxOffer ? `Up to ${s.maxOffer}% OFF` : '20%',
+      affiliateUrl: s.afWebsite || `/go/${s.slug}`,
+      description: s.aboutStore || s.description || `${s.name} promo codes`,
+      isFeatured: Boolean(s.isFeatured || s.featured),
+      isActive: s.isActive !== false,
+      clicks: Number(s.afVisitCount ?? 0),
+    }),
+    fallbackItems: [],
+  });
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setParam('search', val.trim() || undefined);
+  };
+
+  const handleCategoryChange = (val: string) => {
+    setCategoryFilter(val);
+    if (val === 'ALL') {
+      setParam('categoryId', undefined);
+      setParam('category', undefined);
+    } else {
+      setParam('categoryId', Number(val));
+    }
+  };
+
+  const handleStatusChange = (val: StatusFilter) => {
+    setStatusFilter(val);
+    setParam('status', val !== 'ALL' ? val : undefined);
+  };
+
+  const handleSortChange = (val: SortBy) => {
+    setSortBy(val);
+    if (val === 'rating-desc') {
+      setParam('sortBy', 'ratingScore');
+      setParam('direction', 'desc');
+    } else if (val === 'coupons-desc') {
+      setParam('sortBy', 'sortOrder');
+      setParam('direction', 'asc');
+    } else if (val === 'clicks-desc') {
+      setParam('sortBy', 'afVisitCount');
+      setParam('direction', 'desc');
+    } else {
+      setParam('sortBy', 'name');
+      setParam('direction', 'asc');
+    }
+  };
+
+  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || sortBy !== 'name-asc';
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setCategoryFilter('ALL');
+    setStatusFilter('ALL');
+    setSortBy('name-asc');
+    setParam('search', undefined);
+    setParam('categoryId', undefined);
+    setParam('category', undefined);
+    setParam('status', undefined);
+    setParam('sortBy', 'name');
+    setParam('direction', 'asc');
+  };
+
+  const handleClone = async (store: AdminStore) => {
+    const confirmed = await confirmModal({
+      title: 'Clone store',
+      message: `Duplicate "${store.name}" as a draft copy?`,
+      confirmText: 'Clone',
+      cancelText: 'Cancel',
+      variant: 'info',
+    });
+    if (!confirmed) return;
+    try {
+      await storeService.cloneStore(store.id);
+      await refreshStores();
+      toast.success(`Cloned store "${store.name}" successfully!`);
+    } catch {
+      toast.error('Failed to clone store.');
+    }
+  };
+
+  const handleToggleStatus = async (store: AdminStore) => {
+    try {
+      await storeService.toggleStoreStatus(store.id);
+      await refreshStores();
+      toast.success(`Store "${store.name}" status updated.`);
+    } catch {
+      toast.error('Failed to toggle store status.');
+    }
+  };
+
+  const handleDelete = async (store: AdminStore) => {
+    const confirmed = await confirmModal({
+      title: 'Delete store permanently',
+      message: (
+        <span>
+          Are you sure you want to delete{' '}
+          <strong className="text-rose-600 font-bold">{store.name}</strong>?
+        </span>
+      ),
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await storeService.deleteStore(store.id);
+      await refreshStores();
+      toast.success(`Store "${store.name}" deleted successfully`);
+    } catch {
+      toast.error('Failed to delete store.');
+    }
+  };
 
   if (!hasPermission('store.view')) {
     return <UnauthorizedAccess requiredPermission="store.view" moduleName="Stores & Merchants" />;
   }
-  const [search, setSearch] = useState('');
-  const [networkFilter, setNetworkFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'FEATURED'>('ALL');
-  const [sortBy, setSortBy] = useState<'name-asc' | 'rating-desc' | 'coupons-desc' | 'clicks-desc'>('name-asc');
-  const [notification, setNotification] = useState<string | null>(null);
-
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  const showToast = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const handleClone = (store: AdminStore) => {
-    const cloned: AdminStore = {
-      ...store,
-      id: `s-${Date.now()}`,
-      name: `${store.name} (Copy)`,
-      slug: `${store.slug}-copy-${Date.now().toString().slice(-4)}`,
-      clicks: 0,
-      activeCoupons: 0,
-    };
-    create(cloned);
-    showToast(`Duplicated store "${store.name}"`);
-  };
-
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete store: "${name}"?`)) {
-      remove(id);
-      showToast('Store deleted successfully');
-    }
-  };
-
-  const handleResetFilters = () => {
-    setSearch('');
-    setNetworkFilter('ALL');
-    setCategoryFilter('ALL');
-    setStatusFilter('ALL');
-    setSortBy('name-asc');
-    setCurrentPage(1);
-  };
-
-  // Filter & Sort
-  const filtered = stores
-    .filter((s) => {
-      const matchSearch =
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.domain.toLowerCase().includes(search.toLowerCase()) ||
-        s.slug.toLowerCase().includes(search.toLowerCase()) ||
-        (s.description && s.description.toLowerCase().includes(search.toLowerCase()));
-
-      const matchNetwork = networkFilter === 'ALL' || s.network === networkFilter;
-      const matchCategory = categoryFilter === 'ALL' || s.category === categoryFilter;
-
-      let matchStatus = true;
-      if (statusFilter === 'ACTIVE') matchStatus = s.isActive;
-      else if (statusFilter === 'INACTIVE') matchStatus = !s.isActive;
-      else if (statusFilter === 'FEATURED') matchStatus = s.isFeatured;
-
-      return matchSearch && matchNetwork && matchCategory && matchStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'rating-desc') return (b.rating || 0) - (a.rating || 0);
-      if (sortBy === 'coupons-desc') return (b.activeCoupons || 0) - (a.activeCoupons || 0);
-      if (sortBy === 'clicks-desc') return (b.clicks || 0) - (a.clicks || 0);
-      return a.name.localeCompare(b.name);
-    });
-
-  // Unique categories for filter dropdown
-  const availableCategories = Array.from(new Set(stores.map((s) => s.category).filter(Boolean)));
-
-  const isFiltered =
-    search !== '' ||
-    networkFilter !== 'ALL' ||
-    categoryFilter !== 'ALL' ||
-    statusFilter !== 'ALL' ||
-    sortBy !== 'name-asc';
-
-  // Pagination Slice
-  const totalItems = filtered.length;
-  const paginatedStores = filtered.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
 
   return (
     <div className="space-y-6">
-      
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fadeIn">
-          <Check size={16} className="text-emerald-400" />
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              <StoreIcon className="text-[#C62828]" size={26} /> Merchant Stores Directory
-            </h1>
-            <span className="bg-[#C62828]/10 text-[#C62828] text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {stores.length} Stores Total
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Manage merchant brand profiles, logos, affiliate networks, and verified discount coupons.
-          </p>
-        </div>
-
+      {/* Header */}
+      <AdminPageHeader
+        icon={StoreIcon}
+        title="Merchant Stores Directory"
+        badge={`${totalItems} Stores Total`}
+        description="Manage merchant brand profiles, logos, and verified discount coupons."
+      >
         {hasPermission('store.create') && (
           <Link
             href={ROUTES.ADMIN.STORE_CREATE}
@@ -156,305 +270,195 @@ export default function AdminStoresPage() {
             <Plus size={16} /> Add New Store
           </Link>
         )}
-      </div>
+      </AdminPageHeader>
 
-      {/* 2. Advanced Search & Filter Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
-        
-        {/* Top Search & Filter Row */}
+      {/* Filters */}
+      <AdminFilterBar totalItems={totalItems} itemName="stores" isFiltered={isFiltered} onReset={handleResetFilters}>
+        {/* Top row: search + selects */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Keyword Search */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
             <input
               type="text"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search store name, slug, domain..."
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828]"
+              className={adminSearchInputClass}
             />
           </div>
 
-          {/* Category Filter */}
-          <div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="ALL">All Categories</option>
-              {availableCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as any);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active Only</option>
-              <option value="INACTIVE">Inactive Only</option>
-              <option value="FEATURED">Featured Directory Only</option>
-            </select>
-          </div>
-
-          {/* Sort By */}
-          <div>
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value as any);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] cursor-pointer"
-            >
-              <option value="name-asc">Sort: Name (A to Z)</option>
-              <option value="rating-desc">Sort: Highest Rating</option>
-              <option value="coupons-desc">Sort: Most Coupons</option>
-              <option value="clicks-desc">Sort: Highest Traffic / Clicks</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Network Filter Pills & Reset */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5 font-bold">
-            <span className="text-[11px] text-slate-400 mr-1 flex items-center gap-1">
-              <SlidersHorizontal size={12} /> Network:
-            </span>
-            {(['ALL', 'partnerboost', 'impact', 'shareasale', 'cj', 'direct'] as const).map((net) => (
-              <button
-                key={net}
-                onClick={() => {
-                  setNetworkFilter(net);
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition text-[11px] uppercase tracking-wider cursor-pointer whitespace-nowrap ${
-                  networkFilter === net
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {net}
-              </button>
+          <select
+            value={categoryFilter}
+            onFocus={loadCategories}
+            onClick={loadCategories}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className={adminSelectClass}
+          >
+            <option value="ALL">All Categories</option>
+            {availableCategories.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {c.name}
+              </option>
             ))}
-          </div>
+          </select>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-500 font-medium">
-              Found <strong className="text-slate-900">{totalItems}</strong> matching stores
-            </span>
-            {isFiltered && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="text-[11px] font-bold text-[#C62828] hover:underline cursor-pointer"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
+          <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value as StatusFilter)} className={adminSelectClass}>
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active Only</option>
+            <option value="INACTIVE">Inactive Only</option>
+            <option value="FEATURED">Featured Directory Only</option>
+          </select>
+
+          <select value={sortBy} onChange={(e) => handleSortChange(e.target.value as SortBy)} className={adminSelectClass}>
+            <option value="name-asc">Sort: Name (A to Z)</option>
+            <option value="rating-desc">Sort: Highest Rating</option>
+            <option value="coupons-desc">Sort: Most Coupons</option>
+            <option value="clicks-desc">Sort: Highest Traffic / Clicks</option>
+          </select>
         </div>
+      </AdminFilterBar>
 
-      </div>
-
-      {/* 3. Stores Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3 px-4">Merchant Brand</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Network & Deals</th>
-                <th className="py-3 px-4">Rating</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right w-44 min-w-[176px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedStores.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
-                    No merchant stores match your current filters.
-                  </td>
-                </tr>
-              ) : (
-                paginatedStores.map((store) => (
-                  <tr key={store.id} className="hover:bg-slate-50/60 transition-colors group">
-                    
-                    {/* Brand Info */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                          {store.logoUrl ? (
-                            <Image
-                              src={store.logoUrl}
-                              alt={store.name}
-                              width={40}
-                              height={40}
-                              className="object-contain w-full h-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-slate-100 text-slate-400 font-black flex items-center justify-center text-xs">
-                              {store.name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-sm group-hover:text-[#C62828] transition-colors">
-                              {store.name}
-                            </span>
-                            {store.isFeatured && (
-                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded">
-                                Featured
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                            <span className="font-mono text-slate-400">/{store.slug}</span>
-                            <span>•</span>
-                            <a
-                              href={`https://${store.domain}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline flex items-center gap-0.5 text-slate-500 hover:text-slate-800"
-                            >
-                              <span>{store.domain}</span>
-                              <ExternalLink size={10} />
-                            </a>
-                          </div>
-                        </div>
+      {/* Table */}
+      <AdminTableShell
+        columns={TABLE_COLUMNS}
+        rowCount={pagedItems.length}
+        emptyMessage="No merchant stores match your current filters."
+      >
+        {pagedItems.map((store) => {
+          const liveOffersCount = store.activeCoupons ?? 0;
+          return (
+            <tr key={store.id} className="hover:bg-slate-50/60 transition-colors group">
+              {/* Brand */}
+              <td className="py-3.5 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                    {store.logoUrl ? (
+                      <Image src={store.logoUrl} alt={store.name} width={40} height={40} className="object-contain w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 text-slate-400 font-black flex items-center justify-center text-xs">
+                        {store.name.charAt(0)}
                       </div>
-                    </td>
-
-                    {/* Category */}
-                    <td className="py-3.5 px-4">
-                      <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-[11px]">
-                        {store.category}
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-slate-900 text-sm group-hover:text-[#C62828] transition-colors">
+                        {store.name}
                       </span>
-                    </td>
-
-                    {/* Network & Active Coupons */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-1">
-                        <span className="inline-block font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                          {store.network}
-                        </span>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-600 font-medium">
-                          <Tag size={12} className="text-[#C62828]" />
-                          <span>{store.activeCoupons} Coupons ({store.maxDiscount})</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Rating & Reviews */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1 text-slate-800 font-bold">
-                        <Star size={13} className="text-amber-500 fill-amber-500" />
-                        <span>{store.rating.toFixed(1)}</span>
-                        <span className="text-[11px] text-slate-400 font-normal">
-                          ({store.reviewsCount})
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3.5 px-4">
-                      {store.isActive ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
-                          <CheckCircle2 size={12} /> Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
-                          <XCircle size={12} /> Inactive
-                        </span>
+                      {store.isFeatured && (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded">Featured</span>
                       )}
-                    </td>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                      <span className="font-mono text-slate-400">/{store.slug}</span>
+                      <span>•</span>
+                      <a href={`https://${store.domain}`} target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-0.5 text-slate-500 hover:text-slate-800">
+                        <span>{store.domain}</span>
+                        <ExternalLink size={10} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </td>
 
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap w-44 min-w-[176px]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/store/${store.slug}`}
-                          target="_blank"
-                          className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 hover:border-slate-300 transition shrink-0 shadow-2xs"
-                          title="View Live Store Page"
-                        >
-                          <Globe size={13} />
-                        </Link>
+              {/* Category */}
+              <td className="py-3.5 px-4">
+                <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-[11px]">
+                  {store.category}
+                </span>
+              </td>
 
-                        {hasPermission('store.clone') && (
-                          <button
-                            onClick={() => handleClone(store)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-indigo-50/50 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Clone Store"
-                          >
-                            <Copy size={13} />
-                          </button>
-                        )}
+              {/* Coupons & Deals Popup Trigger Button */}
+              <td className="py-3.5 px-4 whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStoreForOffers(store)}
+                  className="w-40 h-8 inline-flex items-center justify-between bg-slate-100 hover:bg-[#C62828] hover:text-white text-slate-700 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer group/btn shadow-2xs whitespace-nowrap border border-slate-200/80 shrink-0"
+                  title="Click to view all coupons, promo codes & deals in this store"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Tag size={13} className="text-[#C62828] group-hover/btn:text-white transition-colors shrink-0" />
+                    <span className="font-bold text-xs">{liveOffersCount}</span>
+                    <span className="text-slate-500 group-hover/btn:text-white/90 text-xs font-medium">offers</span>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-white group-hover/btn:bg-white/20 text-slate-600 group-hover/btn:text-white px-1.5 py-0.5 rounded-md border border-slate-200/60 group-hover/btn:border-transparent transition-colors shrink-0">
+                    View
+                  </span>
+                </button>
+              </td>
 
-                        {hasPermission('store.update') && (
-                          <Link
-                            href={ROUTES.ADMIN.STORE_EDIT(store.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-rose-50/60 text-slate-600 hover:text-[#C62828] hover:border-[#C62828]/40 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Edit Store & Logo"
-                          >
-                            <Edit2 size={13} />
-                          </Link>
-                        )}
+              {/* Rating */}
+              <td className="py-3.5 px-4">
+                <div className="flex items-center gap-1 text-slate-800 font-bold">
+                  <Star size={13} className="text-amber-500 fill-amber-500" />
+                  <span>{store.rating.toFixed(1)}</span>
+                  <span className="text-[11px] text-slate-400 font-normal">({store.reviewsCount})</span>
+                </div>
+              </td>
 
-                        {hasPermission('store.delete') && (
-                          <button
-                            onClick={() => handleDelete(store.id, store.name)}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-rose-50/60 text-slate-400 hover:text-rose-600 hover:border-rose-300 transition shrink-0 shadow-2xs cursor-pointer"
-                            title="Delete Store"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+              {/* Status */}
+              <td className="py-3.5 px-4">
+                <button
+                  type="button"
+                  onClick={() => handleToggleStatus(store)}
+                  title="Click to toggle active status"
+                  className="cursor-pointer hover:opacity-80 transition inline-block"
+                >
+                  {store.isActive ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
+                      <CheckCircle2 size={12} /> Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
+                      <XCircle size={12} /> Inactive
+                    </span>
+                  )}
+                </button>
+              </td>
 
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              {/* Actions */}
+              <td className="py-3.5 px-4 text-right whitespace-nowrap w-48 min-w-[192px]">
+                <div className="flex items-center justify-end gap-1.5">
+                  <AdminActionButton
+                    icon={Eye}
+                    onClick={() => setSelectedStoreForOffers(store)}
+                    title="View Coupons, Promo Codes & Deals in this store"
+                    variant="default"
+                  />
+                  <AdminActionButton icon={Globe} href={`/store/${store.slug}`} target="_blank" title="View Live Store Page" variant="default" />
+                  {hasPermission('store.clone') && (
+                    <AdminActionButton icon={Copy} onClick={() => handleClone(store)} title="Clone Store" variant="indigo" />
+                  )}
+                  {hasPermission('store.update') && (
+                    <AdminActionButton icon={Edit2} href={ROUTES.ADMIN.STORE_EDIT(store.id)} title="Edit Store & Logo" variant="primary" />
+                  )}
+                  {hasPermission('store.delete') && (
+                    <AdminActionButton icon={Trash2} onClick={() => handleDelete(store)} title="Delete Store" variant="danger" />
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </AdminTableShell>
 
-        {/* 4. Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-          pageSizeOptions={[5, 10, 20, 50]}
-          itemName="stores"
-        />
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[5, 10, 20, 50]}
+        itemName="stores"
+      />
 
-      </div>
-
+      {/* Store Offers Popup Modal */}
+      <StoreOffersModal
+        isOpen={selectedStoreForOffers !== null}
+        onClose={() => setSelectedStoreForOffers(null)}
+        store={selectedStoreForOffers}
+      />
     </div>
   );
 }

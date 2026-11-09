@@ -1,5 +1,5 @@
 # TỔNG HỢP TOÀN BỘ TECHSTACK HỆ THỐNG
-## CỔNG TIN TỨC & MÃ GIẢM GIÁ AFFILIATE (BARGORYA & PROCMS)
+## CỔNG TIN TỨC & MÃ GIẢM GIÁ AFFILIATE (HEYGOODLY & PROCMS)
 *(Cập nhật chuẩn hóa: Java 21, Spring Boot 3.x, Liquibase, GitHub Actions, Next.js cho Client & Admin, PostgreSQL, Không dùng Redis)*
 
 ---
@@ -92,7 +92,7 @@ Toàn bộ logic nghiệp vụ, phân quyền và dữ liệu được điều k
 
 ### 2.4. LƯU TRỮ TỆP TIN (STORAGE RESOURCE)
 * **Phương án:** **Lưu trực tiếp trên ổ cứng VPS (Local Disk Storage)** kết hợp **Cloudflare Free CDN**.
-* **Đường dẫn vật lý:** `/var/www/bargorya/uploads/` (chia các thư mục `stores/`, `posts/`, `banners/`).
+* **Đường dẫn vật lý:** `/var/www/heygoodly/uploads/` (chia các thư mục `stores/`, `posts/`, `banners/`).
 * **Phục vụ tệp tin:** **Nginx** phục vụ tĩnh trực tiếp với cấu hình `expires 30d` và `Cache-Control: public, immutable` (Spring Boot chỉ làm nhiệm vụ ghi file vào đĩa).
 * **Cloudflare CDN:** Bật proxy miễn phí để lưu cache ảnh toàn cầu, tải siêu nhanh cho khách từ Social mà không tốn băng thông server.
 * **Code Design:** Dùng interface `StorageService` trừu tượng (chạy `LocalStorageServiceImpl`), sẵn sàng mở rộng sang S3/R2 sau này nếu muốn.

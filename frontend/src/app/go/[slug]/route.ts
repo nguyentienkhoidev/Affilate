@@ -1,21 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mockStores from '@/lib/data/mock-stores.json';
-
-const fallbackRedirects: Record<string, string> = {
-  nilight: 'https://www.nilight.com/?pb_ref=bargorya',
-  'neo-sabers': 'https://neosabers.com/?ref=bargorya',
-  auxito: 'https://auxito.com/?impact_ref=bargorya',
-  anker: 'https://www.anker.com/?cj_ref=bargorya',
-  hostinger: 'https://www.hostinger.com/?impact_ref=bargorya',
-  lasfit: 'https://www.lasfit.com/?ref=bargorya',
-  ugreen: 'https://www.ugreen.com/?ref=bargorya',
-  'baja-designs': 'https://www.bajadesigns.com/?ref=bargorya',
-  'diode-dynamics': 'https://www.diodedynamics.com/?ref=bargorya',
-  baseus: 'https://www.baseus.com/?ref=bargorya',
-  cricut: 'https://www.cricut.com/?ref=bargorya',
-  ecoflow: 'https://www.ecoflow.com/?ref=bargorya',
-  jackery: 'https://www.jackery.com/?ref=bargorya',
-};
+import { ROUTES } from '@/constants/routes';
 
 export async function GET(
   request: NextRequest,
@@ -23,27 +7,47 @@ export async function GET(
 ) {
   const { slug } = await params;
   const targetSlug = slug.toLowerCase().trim().replace(/-store$/, '');
+  const backendBase =
+    process.env.BACKEND_INTERNAL_URL ||
+    (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080').replace(/\/api\/v1\/?$/, '');
 
-  // 1. Check in dataset
-  const matchedStore = (mockStores as any[]).find(
-    (s) => s.slug?.toLowerCase() === targetSlug || s.slug?.toLowerCase() === `${targetSlug}-store`
-  );
+  let destination: string | null = null;
 
-  let destination = matchedStore?.affiliateUrl || matchedStore?.websiteUrl || fallbackRedirects[targetSlug];
+  try {
+    const backendRes = await fetch(`${backendBase}/go/${encodeURIComponent(targetSlug)}`, {
+      method: 'GET',
+      redirect: 'manual',
+      cache: 'no-store',
+    });
 
-  if (!destination) {
-    destination = `https://${targetSlug}.com/?ref=bargorya`;
+    const location = backendRes.headers.get('location');
+    if (location) {
+      destination = location;
+    }
+  } catch {
+    // Fall back to local store page if backend redirect cannot resolve
   }
 
-  // 2. Preserve and forward incoming UTM and sub-id parameters (SRS FE-STORE-11)
+  if (!destination) {
+    const fallbackUrl = new URL(ROUTES.PUBLIC.STORE_DETAIL(targetSlug), request.url);
+    return new NextResponse(null, {
+      status: 307,
+      headers: {
+        Location: fallbackUrl.toString(),
+        'X-Robots-Tag': 'noindex, nofollow, noarchive',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
+  }
+
   const incomingUrl = new URL(request.url);
-  const targetUrl = new URL(destination);
+  const targetUrl = new URL(destination, request.url);
   incomingUrl.searchParams.forEach((value, key) => {
     targetUrl.searchParams.set(key, value);
   });
 
   return new NextResponse(null, {
-    status: 307, // HTTP 307 Temporary Redirect as required by SEO specification
+    status: 307,
     headers: {
       Location: targetUrl.toString(),
       'X-Robots-Tag': 'noindex, nofollow, noarchive',
