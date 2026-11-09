@@ -53,3 +53,4 @@ WHERE slug = 'google-ai-hardware-ecosystem-review-2026' AND (image IS NULL OR im
 UPDATE posts
 SET image = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&auto=format&fit=crop&q=80'
 WHERE slug = 'trump-tariffs-ecommerce-consumer-goods-impact-2026' AND (image IS NULL OR image = '');
+
