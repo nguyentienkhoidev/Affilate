@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN NOT NULL DEFAULT true,
     two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
     two_factor_secret VARCHAR(255),
-    two_factor_backup_codes JSONB,
+    two_factor_recovery_codes JSONB,
     last_login_at TIMESTAMPTZ,
     last_login_ip VARCHAR(50),
     login_count INT NOT NULL DEFAULT 0,
