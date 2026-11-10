@@ -24,7 +24,16 @@ export interface PaginatedPostsResult {
 }
 
 export function mapBackendPostToArticle(p: any): Article {
-  const img = typeof (p.image ?? p.imageUrl) === 'string' ? String(p.image ?? p.imageUrl).trim() : '';
+  let img = typeof (p.image ?? p.imageUrl) === 'string' ? String(p.image ?? p.imageUrl).trim() : '';
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && img.startsWith('http://')) {
+    try {
+      const parsed = new URL(img);
+      if (parsed.hostname === window.location.hostname) {
+        parsed.protocol = 'https:';
+        img = parsed.toString();
+      }
+    } catch {}
+  }
 
   let parsedTags: string[] = [];
   if (Array.isArray(p.tags)) {

@@ -53,7 +53,20 @@ const resolveApiBaseUrl = (): string => {
       'http://localhost:8080';
     return internalBase.replace(/\/api\/v1\/?$/, '');
   }
-  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/api\/v1\/?$/, '');
+  // In the browser: automatically match protocol or use relative origin to prevent mixed content
+  if (typeof window !== 'undefined') {
+    if (window.location.protocol === 'https:') {
+      if (process.env.NEXT_PUBLIC_API_URL?.startsWith('http://')) {
+        return window.location.origin;
+      }
+    }
+    const publicUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (publicUrl && publicUrl.trim() !== '') {
+      return publicUrl.replace(/\/api\/v1\/?$/, '');
+    }
+    return window.location.origin;
+  }
+  return '';
 };
 
 export const apiClient = axios.create({

@@ -167,13 +167,24 @@ function AdminPostsContent() {
         status = isFuture ? 'SCHEDULED' : 'PUBLISHED';
       }
 
+      let postImg = p.image || '';
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && postImg.startsWith('http://')) {
+        try {
+          const parsed = new URL(postImg);
+          if (parsed.hostname === window.location.hostname) {
+            parsed.protocol = 'https:';
+            postImg = parsed.toString();
+          }
+        } catch {}
+      }
+
       return {
         id: String(p.id),
         title: p.title || '',
         slug: p.slug || '',
         excerpt: p.excerpt || '',
         content: p.excerpt || '',
-        imageUrl: p.image || '',
+        imageUrl: postImg,
         category: p.categoryName || 'General',
         categoryId: p.categoryId ? Number(p.categoryId) : undefined,
         author: {
