@@ -2,23 +2,19 @@
 
 import { use, useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ROUTES } from '@/constants/routes';
 import { Article } from '@/types/deals';
 import postService from '@/services/postService';
 import categoryService, { CategoryItem } from '@/services/categoryService';
 import tagService, { TagItem } from '@/services/tagService';
 import Pagination from '@/components/admin/Pagination';
+import ArticleCard from '@/components/deals/ArticleCard';
 import {
-  Calendar,
-  Clock,
   ChevronRight,
   ArrowRight,
   ArrowLeft,
-  Tag as TagIcon,
   Flame,
   Layers,
-  BookOpen,
   Hash,
   Check,
   Search,
@@ -188,16 +184,16 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
       <div className="max-w-7xl mx-auto px-4 space-y-6 sm:space-y-8">
 
         {/* 1. Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-[#c62828] transition">Home</Link>
-          <ChevronRight size={12} />
+          <ChevronRight size={12} className="shrink-0" />
           <Link href={ROUTES.PUBLIC.CATEGORIES} className="hover:text-[#c62828] transition">Categories</Link>
-          <ChevronRight size={12} />
-          <span className="text-slate-900 font-semibold">{meta?.name || normalizedSlug}</span>
+          <ChevronRight size={12} className="shrink-0" />
+          <span className="text-slate-900 font-semibold truncate max-w-[180px] sm:max-w-xs">{meta?.name || normalizedSlug}</span>
         </nav>
 
         {/* 2. Category Header Banner */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-2xs space-y-4 relative overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-10 shadow-2xs space-y-4 relative">
           <div className="flex flex-wrap items-center gap-2.5">
             {meta?.icon && <span className="text-2xl">{meta.icon}</span>}
             <span className="bg-[#c62828] text-white font-black text-[11px] uppercase tracking-wider px-3 py-1 rounded-sm shadow-xs">
@@ -341,7 +337,7 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
                     </button>
 
                     {isTopicPopoverOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-3rem))] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                         {/* Search Header */}
                         <div className="relative mb-2.5">
                           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -436,7 +432,7 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
         </div>
 
         {/* 3. Toolbar & Sorting */}
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs flex items-center justify-between gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
             <Flame size={15} className="text-[#c62828]" />
             <span>Editorial Articles ({totalArticles})</span>
@@ -478,92 +474,11 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
         ) : articles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article) => (
-              <article
-                key={article.id}
-                className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl overflow-hidden shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between group"
-              >
-                <div>
-                  <Link
-                    href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}
-                    className="block relative aspect-[16/10] overflow-hidden bg-slate-100"
-                  >
-                    {article.imageUrl ? (
-                      <Image
-                        src={article.imageUrl}
-                        alt={article.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center">
-                        <BookOpen size={36} className="text-white/25" />
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3 bg-[#c62828] text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded shadow-xs">
-                      {article.category}
-                    </div>
-                  </Link>
-
-                  <div className="p-5 space-y-2.5">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                      {article.publishedAt && (
-                        <span className="flex items-center gap-1 font-medium">
-                          <Calendar size={12} /> {article.publishedAt}
-                        </span>
-                      )}
-                      {article.publishedAt && article.readTime && <span>•</span>}
-                      {article.readTime && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} /> {article.readTime}
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="font-bold text-base text-slate-900 group-hover:text-[#c62828] transition leading-snug line-clamp-2">
-                      <Link href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}>
-                        {article.title}
-                      </Link>
-                    </h3>
-
-                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
-                      {article.excerpt}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full overflow-hidden relative border border-slate-200 bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {article.author.avatar ? (
-                        <Image
-                          src={article.author.avatar}
-                          alt={article.author.name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <span>{article.author.name.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <span className="font-semibold text-slate-700 text-[11px]">
-                      {article.author.name}
-                    </span>
-                  </div>
-
-                  <Link
-                    href={ROUTES.PUBLIC.POST_DETAIL(article.slug)}
-                    className="text-[#c62828] font-bold text-xs inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-                  >
-                    <span>Read Review</span>
-                    <ChevronRight size={14} />
-                  </Link>
-                </div>
-              </article>
+              <ArticleCard key={article.id} article={article} />
             ))}
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center space-y-3">
             <p className="text-slate-500 text-sm font-medium">No published articles found matching the selected topics in this category.</p>
             {activeTags.length > 0 && (
               <button
@@ -589,7 +504,7 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
         )}
 
         {/* 6. Editorial Archive Callout */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-3 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 text-center space-y-3 shadow-2xs">
           <span className="text-[10px] font-black uppercase tracking-widest text-[#c62828] block">
             Editorial Archive
           </span>

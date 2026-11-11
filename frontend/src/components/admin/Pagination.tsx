@@ -50,9 +50,9 @@ export default function Pagination({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 px-4 py-3 border-t border-slate-100 bg-white">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 px-3 sm:px-4 py-3 border-t border-slate-100 bg-white">
       {/* Left: Summary & Page Size Customizer */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3 text-center sm:text-left">
         <div>
           {totalItems === 0 ? (
             <span>{locale === 'vi' ? 'Không tìm thấy dữ liệu' : `No ${itemName} found`}</span>
@@ -94,7 +94,7 @@ export default function Pagination({
       </div>
 
       {/* Right: Page Navigation Controls - Always Visible */}
-      <div className="flex items-center gap-1 select-none">
+      <div className="flex flex-wrap items-center justify-center gap-1 select-none">
         {/* First Page */}
         <button
           type="button"

@@ -55,11 +55,11 @@ export default function CategoriesDirectoryPage() {
       <div className="max-w-7xl mx-auto px-4 space-y-8">
 
         {/* Header Banner */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-8 shadow-sm space-y-4">
           <div className="flex items-center gap-2 text-xs font-bold text-[#c62828] uppercase tracking-widest">
             <Layers size={16} /> Article Categories &amp; Editorial Taxonomy
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Explore Articles &amp; Buying Guides by Category ({currentMonthYear})
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
@@ -67,7 +67,7 @@ export default function CategoriesDirectoryPage() {
           </p>
 
           {/* Quick Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             <div className="max-w-md w-full">
               <input
                 type="text"

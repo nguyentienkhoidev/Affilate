@@ -138,11 +138,11 @@ export default function StoresDirectoryPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
         {/* Header Banner */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-2xs space-y-5">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-2xs space-y-5">
           <div className="flex items-center gap-2 text-xs font-bold text-[#c62828] uppercase tracking-widest">
             <StoreIcon size={16} /> Official Merchant Directory &amp; Brand Partners
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight">
             All Partner Stores ({currentMonthYear})
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
@@ -281,7 +281,7 @@ export default function StoresDirectoryPage() {
                   </button>
 
                 {isCategoryPopoverOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-3rem))] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                     {/* Search Header */}
                     <div className="relative mb-2.5">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />

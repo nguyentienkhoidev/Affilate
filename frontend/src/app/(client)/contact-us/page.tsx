@@ -48,15 +48,15 @@ export default function ContactUsPage() {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-4 space-y-8">
+    <div className="bg-slate-50 min-h-screen py-8 sm:py-10">
+      <div className="max-w-7xl mx-auto px-4 space-y-6 sm:space-y-8">
 
         {/* Header */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-sm space-y-3">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-[#c62828] uppercase tracking-widest">
             <MessageSquare size={16} /> Get In Touch
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             Contact {siteName} Support &amp; Partnership Team
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
@@ -64,10 +64,10 @@ export default function ContactUsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
 
           {/* Contact Form */}
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-sm">
+          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-sm">
             {submitted ? (
               <div className="text-center py-12 space-y-4">
                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full flex items-center justify-center mx-auto">

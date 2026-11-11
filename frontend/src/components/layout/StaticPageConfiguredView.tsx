@@ -83,13 +83,13 @@ export default function StaticPageConfiguredView({ slug, children }: StaticPageC
   // 2. Database has custom HTML content
   if (page && page.content && page.content.trim().length > 0) {
     return (
-      <div className="bg-slate-50 min-h-screen py-10">
-        <div className="max-w-4xl mx-auto px-4 space-y-8">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-sm space-y-3">
+      <div className="bg-slate-50 min-h-screen py-8 sm:py-10">
+        <div className="max-w-4xl mx-auto px-4 space-y-6 sm:space-y-8">
+          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-sm space-y-3">
             <div className="inline-flex items-center gap-2 text-xs font-bold text-[#C62828] bg-red-50 px-3 py-1 rounded-full uppercase tracking-widest border border-red-200">
               <FileText size={14} /> Official Policy &amp; Information
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-editorial">
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-editorial">
               {page.title}
             </h1>
             {page.updatedAt && (
@@ -100,7 +100,7 @@ export default function StaticPageConfiguredView({ slug, children }: StaticPageC
           </div>
 
           <div
-            className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-sm space-y-4 text-sm sm:text-base text-slate-700 leading-relaxed prose prose-slate max-w-none"
+            className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-sm space-y-4 text-sm sm:text-base text-slate-700 leading-relaxed prose prose-slate max-w-none"
             dangerouslySetInnerHTML={{ __html: page.content }}
           />
         </div>

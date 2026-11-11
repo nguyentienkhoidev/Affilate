@@ -144,14 +144,14 @@ export default function EditorialArticlesOnlyHomePage() {
   }, [selectedCategories]);
 
   return (
-    <div className="bg-[#F8F8F6] min-h-screen py-8 sm:py-12 text-[#171717]">
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 space-y-14 sm:space-y-18">
+    <div className="bg-[#F8F8F6] min-h-screen py-6 sm:py-10 lg:py-12 text-[#171717]">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14 lg:space-y-16">
 
         {/* 1. HERO MAGAZINE: 1 LEAD STORY + EDITOR'S PICKS */}
         {isLoading ? (
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch animate-pulse">
-            <div className="lg:col-span-8 min-h-[440px] sm:min-h-[520px] rounded-2xl bg-slate-200" />
-            <div className="lg:col-span-4 rounded-2xl bg-white border border-[#E7E7E5] p-6 space-y-4">
+            <div className="lg:col-span-8 min-h-[340px] sm:min-h-[440px] lg:min-h-[520px] rounded-2xl bg-slate-200" />
+            <div className="lg:col-span-4 rounded-2xl bg-white border border-[#E7E7E5] p-5 sm:p-6 space-y-4">
               <div className="h-5 w-1/3 bg-slate-200 rounded" />
               <div className="h-20 bg-slate-100 rounded-xl" />
               <div className="h-20 bg-slate-100 rounded-xl" />
@@ -165,7 +165,7 @@ export default function EditorialArticlesOnlyHomePage() {
             <div className="lg:col-span-8 flex flex-col">
               <Link
                 href={ROUTES.PUBLIC.POST_DETAIL(leadArticle.slug)}
-                className="group relative block w-full h-full min-h-[440px] sm:min-h-[520px] rounded-2xl overflow-hidden bg-[#171717] border border-[#E7E7E5] shadow-xs flex flex-col justify-end"
+                className="group relative block w-full h-full min-h-[340px] sm:min-h-[440px] lg:min-h-[520px] rounded-2xl overflow-hidden bg-[#171717] border border-[#E7E7E5] shadow-xs flex flex-col justify-end"
               >
                 {leadArticle.imageUrl ? (
                   <Image
@@ -182,10 +182,10 @@ export default function EditorialArticlesOnlyHomePage() {
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent" />
 
-                <div className="relative z-10 p-6 sm:p-10 space-y-3.5 text-white max-w-2xl">
-                  <div className="flex items-center gap-2.5">
+                <div className="relative z-10 p-5 sm:p-8 lg:p-10 space-y-3 sm:space-y-3.5 text-white max-w-2xl">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <span className="bg-[#C62828] text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded shadow-xs inline-flex items-center gap-1.5">
                       <span>{leadArticle.category}</span>
                     </span>
@@ -195,7 +195,7 @@ export default function EditorialArticlesOnlyHomePage() {
                     </span>
                   </div>
 
-                  <h1 className="font-editorial text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight drop-shadow-xs group-hover:text-amber-100 transition-colors">
+                  <h1 className="font-editorial text-xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight drop-shadow-xs group-hover:text-amber-100 transition-colors">
                     {leadArticle.title}
                   </h1>
 
@@ -203,7 +203,7 @@ export default function EditorialArticlesOnlyHomePage() {
                     {leadArticle.excerpt}
                   </p>
 
-                  <div className="flex items-center gap-3 text-xs text-[#A8A8A2] pt-2 border-t border-white/20">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#A8A8A2] pt-2 border-t border-white/20">
                     <span className="font-semibold text-white">
                       By {leadArticle.author.name}
                     </span>
@@ -290,7 +290,7 @@ export default function EditorialArticlesOnlyHomePage() {
           </div>
 
           {spotlightArticles.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {spotlightArticles.map((article) => (
                 <ArticleCard key={article.id} article={article} variant="standard" />
               ))}
@@ -431,7 +431,7 @@ export default function EditorialArticlesOnlyHomePage() {
                 </button>
 
                 {isCategoryPopoverOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                     {/* Search Header */}
                     <div className="relative mb-2.5">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -580,7 +580,7 @@ export default function EditorialArticlesOnlyHomePage() {
 
         {/* 4. MINIMALIST NEWSLETTER DISPATCH */}
         {newsletter.newsletterEnabled && (
-          <section aria-label="Editorial Dispatch Newsletter" className="bg-white border border-[#E7E7E5] rounded-2xl p-8 sm:p-10 shadow-xs">
+          <section aria-label="Editorial Dispatch Newsletter" className="bg-white border border-[#E7E7E5] rounded-2xl p-6 sm:p-10 shadow-xs">
             <div className="max-w-2xl mx-auto text-center space-y-3">
               <span className="text-[10px] font-black uppercase tracking-widest text-[#C62828] block">
                 {newsletter.newsletterEyebrow}

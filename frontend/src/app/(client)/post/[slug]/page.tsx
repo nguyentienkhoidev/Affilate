@@ -267,25 +267,25 @@ export default function ArticleDetailPage() {
       <div className="max-w-7xl mx-auto px-4 space-y-10">
 
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-red-700 transition">Home</Link>
-          <ChevronRight size={12} />
+          <ChevronRight size={12} className="shrink-0" />
           <Link href={ROUTES.PUBLIC.POSTS} className="hover:text-red-700 transition">Reviews &amp; Editorial</Link>
           {categorySlug && (
             <>
-              <ChevronRight size={12} />
+              <ChevronRight size={12} className="shrink-0" />
               <Link href={ROUTES.PUBLIC.CATEGORY_DETAIL(categorySlug)} className="hover:text-red-700 transition">
                 {article.category}
               </Link>
             </>
           )}
-          <ChevronRight size={12} />
-          <span className="text-slate-900 font-semibold truncate max-w-sm">{article.title}</span>
+          <ChevronRight size={12} className="shrink-0" />
+          <span className="text-slate-900 font-semibold truncate max-w-[180px] sm:max-w-sm">{article.title}</span>
         </nav>
 
         {/* Article Header Card */}
-        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-10 shadow-xs space-y-6">
-          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+        <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-xs space-y-5 sm:space-y-6">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
             <span className="bg-red-700 text-white font-black text-[11px] uppercase tracking-wider px-3 py-1 rounded-sm shadow-xs">
               {article.category}
             </span>
@@ -327,7 +327,7 @@ export default function ArticleDetailPage() {
 
           {/* Author Byline */}
           <div className="pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 rounded-full overflow-hidden relative border border-slate-200 bg-slate-900 text-white flex items-center justify-center font-bold text-sm shrink-0">
                 {article.author.avatar ? (
                   <Image
@@ -340,8 +340,8 @@ export default function ArticleDetailPage() {
                   <span>{article.author.name.charAt(0).toUpperCase()}</span>
                 )}
               </div>
-              <div>
-                <div className="font-extrabold text-slate-900 text-sm">
+              <div className="min-w-0">
+                <div className="font-extrabold text-slate-900 text-sm truncate">
                   {article.author.name}
                 </div>
                 <div className="text-xs text-slate-500">
@@ -350,8 +350,8 @@ export default function ArticleDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-lg">
-              <ShieldCheck size={14} className="text-emerald-600" />
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-lg w-fit">
+              <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
               <span>Independently Purchased &amp; Laboratory Tested</span>
             </div>
           </div>
@@ -359,7 +359,7 @@ export default function ArticleDetailPage() {
 
         {/* Featured Image Banner */}
         {article.imageUrl && (
-          <div className="relative aspect-[21/9] min-h-[260px] sm:min-h-[440px] rounded-3xl overflow-hidden shadow-xs border border-slate-200 bg-slate-900">
+          <div className="relative aspect-[16/10] sm:aspect-[21/9] min-h-[200px] sm:min-h-[340px] lg:min-h-[440px] rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs border border-slate-200 bg-slate-900">
             <Image
               src={article.imageUrl}
               alt={article.title}
@@ -374,14 +374,14 @@ export default function ArticleDetailPage() {
         {/* Article Body: 8 Columns Dynamic Editorial Content + 4 Columns Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-          <div className="lg:col-span-8 space-y-8 text-slate-800 leading-relaxed text-sm sm:text-base">
+          <div className="lg:col-span-8 min-w-0 space-y-6 sm:space-y-8 text-slate-800 leading-relaxed text-sm sm:text-base">
             {hasRichContent ? (
               <div
-                className="editorial-article-body bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6"
+                className="editorial-article-body bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 md:p-8 shadow-xs space-y-6"
                 dangerouslySetInnerHTML={{ __html: article.content || '' }}
               />
             ) : (
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-4">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-8 shadow-xs space-y-4">
                 <p className="text-slate-700 leading-relaxed">
                   {article.excerpt || 'No article body has been published for this entry yet.'}
                 </p>
@@ -395,7 +395,7 @@ export default function ArticleDetailPage() {
             </div>
           </div>
 
-          <aside className="lg:col-span-4 relative self-stretch">
+          <aside className="lg:col-span-4 min-w-0 relative self-stretch">
             <div className="sticky top-24 z-20 space-y-6">
 
               {/* 1. Target Store Affiliate Callout Box (Strictly only when post is linked to a real Store) */}
@@ -583,7 +583,7 @@ export default function ArticleDetailPage() {
 
         {/* Related Articles - Below main article grid */}
         {relatedArticles.length > 0 && (
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4 max-w-3xl">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4 max-w-full lg:max-w-4xl">
             <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-3">
               Related Editorial Reviews
             </h3>
@@ -592,7 +592,7 @@ export default function ArticleDetailPage() {
                 <Link
                   key={rel.id}
                   href={ROUTES.PUBLIC.POST_DETAIL(rel.slug)}
-                  className="flex items-start gap-3 group"
+                  className="flex items-start gap-3 group min-w-0"
                 >
                   <div className="relative w-16 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center">
                     {rel.imageUrl ? (
@@ -607,7 +607,7 @@ export default function ArticleDetailPage() {
                       <BookOpen size={16} className="text-slate-400" />
                     )}
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <h4 className="font-bold text-xs text-slate-900 group-hover:text-red-700 transition line-clamp-2 leading-snug">
                       {rel.title}
                     </h4>

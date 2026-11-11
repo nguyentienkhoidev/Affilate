@@ -2,7 +2,6 @@
 
 import { use, useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ROUTES } from '@/constants/routes';
 import { Article } from '@/types/deals';
 import postService from '@/services/postService';
@@ -10,13 +9,10 @@ import tagService, { type TagItem } from '@/services/tagService';
 import Pagination from '@/components/admin/Pagination';
 import ArticleCard from '@/components/deals/ArticleCard';
 import {
-  Calendar,
-  Clock,
   ChevronRight,
   ArrowRight,
   Tag as TagIcon,
   Flame,
-  BookOpen,
   Hash,
   Search,
   X,
@@ -122,16 +118,16 @@ export default function TagArchivePage({ params }: TagPageProps) {
       <div className="max-w-7xl mx-auto px-4 space-y-6 sm:space-y-8">
 
         {/* 1. Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-[#c62828] transition">Home</Link>
-          <ChevronRight size={12} />
+          <ChevronRight size={12} className="shrink-0" />
           <Link href={ROUTES.PUBLIC.POSTS} className="hover:text-[#c62828] transition">Topics</Link>
-          <ChevronRight size={12} />
-          <span className="text-slate-900 font-semibold">#{rawTag}</span>
+          <ChevronRight size={12} className="shrink-0" />
+          <span className="text-slate-900 font-semibold truncate max-w-[180px] sm:max-w-xs">#{rawTag}</span>
         </nav>
 
         {/* 2. Tag Header Banner */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-2xs space-y-4 relative overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-10 shadow-2xs space-y-4 relative">
           <div className="flex flex-wrap items-center gap-2.5">
             <span
               className="text-white font-black text-[11px] uppercase tracking-wider px-3 py-1 rounded-sm shadow-xs flex items-center gap-1.5"
@@ -234,7 +230,7 @@ export default function TagArchivePage({ params }: TagPageProps) {
                     </button>
 
                     {isTopicPopoverOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-3rem))] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                         {/* Search Header */}
                         <div className="relative mb-2.5">
                           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -309,7 +305,7 @@ export default function TagArchivePage({ params }: TagPageProps) {
         </div>
 
         {/* 3. Toolbar & Sorting */}
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs flex items-center justify-between gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
             <Flame size={15} className="text-[#c62828]" />
             <span>Editorial Articles ({totalArticles})</span>
@@ -372,7 +368,7 @@ export default function TagArchivePage({ params }: TagPageProps) {
         )}
 
         {/* 6. Editorial Archive Callout */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-3 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 text-center space-y-3 shadow-2xs">
           <span className="text-[10px] font-black uppercase tracking-widest text-[#c62828] block">
             Editorial Archive
           </span>

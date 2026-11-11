@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Newsreader } from 'next/font/google';
 import './globals.css';
 import QueryProvider from '@/components/providers/QueryProvider';
@@ -24,6 +24,12 @@ const BACKEND_BASE = (
   process.env.NEXT_PUBLIC_API_URL ||
   'http://localhost:8080'
 ).replace(/\/api\/v1\/?$/, '');
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   let map: Record<string, string> = {};

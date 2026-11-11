@@ -208,14 +208,14 @@ export default function PostsDirectoryPage() {
       <div className="max-w-7xl mx-auto px-4 space-y-8 sm:space-y-10">
 
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-red-700 transition">Home</Link>
           <ChevronRight size={12} />
           <span className="text-slate-900 font-semibold">Editorial Archive &amp; Reviews</span>
         </nav>
 
         {/* Page Header Banner */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xs space-y-6">
           <div className="flex items-center gap-2 text-xs font-bold text-red-700 dark:text-red-500 uppercase tracking-widest">
             <BookOpen size={16} /> HeyGoodly Editorial Archive &amp; Test Lab
           </div>
@@ -347,7 +347,7 @@ export default function PostsDirectoryPage() {
                   </button>
 
                   {isCategoryPopoverOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                    <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-3rem))] sm:w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
                       {/* Search Header */}
                       <div className="relative mb-2.5">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none" />
@@ -530,7 +530,7 @@ export default function PostsDirectoryPage() {
                       </button>
 
                       {isTopicsPopoverOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                        <div className="absolute right-0 top-full mt-2 w-[min(24rem,calc(100vw-3rem))] sm:w-96 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
                           {/* Search Header */}
                           <div className="relative mb-2.5">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none" />
@@ -636,8 +636,8 @@ export default function PostsDirectoryPage() {
 
         {/* Featured Editorial Highlight (Only on page 1 with all categories) */}
         {activeCategories.length === 0 && activeTags.length === 0 && currentPage === 1 && featuredArticle && (
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-shadow grid grid-cols-1 lg:grid-cols-12 gap-0 group">
-            <div className="lg:col-span-7 relative h-64 lg:h-auto min-h-[280px] overflow-hidden bg-slate-100">
+          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-shadow grid grid-cols-1 lg:grid-cols-12 gap-0 group">
+            <div className="lg:col-span-7 relative h-56 sm:h-64 lg:h-auto min-h-[220px] sm:min-h-[280px] overflow-hidden bg-slate-100">
               {featuredArticle.imageUrl ? (
                 <Image
                   src={featuredArticle.imageUrl}
@@ -656,9 +656,9 @@ export default function PostsDirectoryPage() {
               </span>
             </div>
 
-            <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-4">
+            <div className="lg:col-span-5 p-5 sm:p-8 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-3 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                   <span className="font-extrabold text-red-700 uppercase tracking-wider">{featuredArticle.category}</span>
                   {featuredArticle.readTime && (
                     <>
@@ -674,7 +674,7 @@ export default function PostsDirectoryPage() {
                   )}
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-black text-slate-950 group-hover:text-red-700 transition-colors leading-tight">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-950 group-hover:text-red-700 transition-colors leading-tight">
                   <Link href={ROUTES.PUBLIC.POST_DETAIL(featuredArticle.slug)}>
                     {featuredArticle.title}
                   </Link>
@@ -685,8 +685,8 @@ export default function PostsDirectoryPage() {
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-full overflow-hidden relative border border-slate-200 bg-slate-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
                     {featuredArticle.author.avatar ? (
                       <Image
@@ -699,15 +699,15 @@ export default function PostsDirectoryPage() {
                       <span>{featuredArticle.author.name.charAt(0).toUpperCase()}</span>
                     )}
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 leading-tight">{featuredArticle.author.name}</p>
-                    <p className="text-[10px] text-slate-500 leading-tight">{featuredArticle.author.role}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 leading-tight truncate">{featuredArticle.author.name}</p>
+                    <p className="text-[10px] text-slate-500 leading-tight truncate">{featuredArticle.author.role}</p>
                   </div>
                 </div>
 
                 <Link
                   href={ROUTES.PUBLIC.POST_DETAIL(featuredArticle.slug)}
-                  className="inline-flex items-center gap-1.5 text-xs font-black text-red-700 hover:text-red-800"
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-red-700 hover:text-red-800 shrink-0 whitespace-nowrap"
                 >
                   Read Review <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
@@ -718,7 +718,7 @@ export default function PostsDirectoryPage() {
 
         {/* 3 Articles Per Row Grid */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
               <span className="w-2 h-5 bg-red-700 rounded-xs inline-block" />
               Editorial Articles ({totalCount})
@@ -809,8 +809,8 @@ export default function PostsDirectoryPage() {
                     </div>
                   </div>
 
-                  <div className="p-5 pt-3 border-t border-slate-100 mt-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="p-5 pt-3 border-t border-slate-100 mt-4 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-6 h-6 rounded-full overflow-hidden relative border border-slate-200 bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                         {art.author.avatar ? (
                           <Image
@@ -823,15 +823,15 @@ export default function PostsDirectoryPage() {
                           <span>{art.author.name.charAt(0).toUpperCase()}</span>
                         )}
                       </div>
-                      <div>
-                        <p className="text-[11px] font-bold text-slate-800 leading-tight">{art.author.name}</p>
-                        <p className="text-[9px] text-slate-400 leading-tight">{art.author.role}</p>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-slate-800 leading-tight truncate">{art.author.name}</p>
+                        <p className="text-[9px] text-slate-400 leading-tight truncate">{art.author.role}</p>
                       </div>
                     </div>
 
                     <Link
                       href={ROUTES.PUBLIC.POST_DETAIL(art.slug)}
-                      className="text-xs font-bold text-red-700 group-hover:text-red-800 inline-flex items-center gap-1"
+                      className="text-xs font-bold text-red-700 group-hover:text-red-800 inline-flex items-center gap-1 shrink-0 whitespace-nowrap"
                     >
                       Read Review <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                     </Link>

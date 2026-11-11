@@ -133,15 +133,15 @@ export default function ArticleCard({
             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{article.excerpt}</p>
           </div>
 
-          <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
+          <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
               <AuthorAvatar name={article.author.name} avatar={article.author.avatar} />
-              <span className="font-semibold text-slate-800 text-[11px]">{article.author.name}</span>
+              <span className="font-semibold text-slate-800 text-[11px] truncate">{article.author.name}</span>
             </div>
 
             <Link
               href={postHref}
-              className="text-xs font-bold text-slate-950 group-hover:text-red-700 flex items-center gap-1.5 transition-colors"
+              className="text-xs font-bold text-slate-950 group-hover:text-red-700 flex items-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
             >
               <span>Read report</span>
               <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
@@ -190,15 +190,15 @@ export default function ArticleCard({
           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{article.excerpt}</p>
         </div>
 
-        <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
+        <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
             <AuthorAvatar name={article.author.name} avatar={article.author.avatar} />
-            <span className="font-semibold text-slate-700 text-[11px]">{article.author.name}</span>
+            <span className="font-semibold text-slate-700 text-[11px] truncate">{article.author.name}</span>
           </div>
 
           <Link
             href={postHref}
-            className="text-xs font-bold text-slate-950 group-hover:text-red-700 flex items-center gap-1 transition-colors"
+            className="text-xs font-bold text-slate-950 group-hover:text-red-700 flex items-center gap-1 transition-colors shrink-0 whitespace-nowrap"
           >
             <span>Read review</span>
             <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />

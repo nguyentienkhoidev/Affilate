@@ -61,8 +61,8 @@ export default function Footer() {
     `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
 
   return (
-    <footer className="bg-[#171717] text-[#D4D4D0] pt-14 pb-10 border-t border-[#262626]">
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+    <footer className="bg-[#171717] text-[#D4D4D0] pt-10 sm:pt-14 pb-8 sm:pb-10 border-t border-[#262626]">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
         {/* Column 1: Brand & Editorial Mission */}
         <div className="space-y-4">
           <div className="flex items-center gap-2.5">
@@ -158,7 +158,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom Legal Copyright */}
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-[#262626] text-xs text-[#737373] flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12 pt-6 border-t border-[#262626] text-xs text-[#737373] flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-center sm:text-left">
         <div>{copyrightText}</div>
         {brandTagline && <div className="text-[11px] text-[#737373]">{brandTagline}</div>}
       </div>

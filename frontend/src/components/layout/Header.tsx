@@ -246,25 +246,25 @@ export default function Header() {
       </div>
 
       {/* 2. BRANDING MASTHEAD */}
-      <div className="bg-white py-6 px-4 sm:px-6 border-b border-[#E7E7E5]">
-        <div className="max-w-[1240px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
-          <Link href={ROUTES.PUBLIC.HOME} className="flex flex-col items-center lg:items-start text-center lg:text-left group shrink-0">
-            <div className="flex items-center gap-3">
+      <div className="bg-white py-4 sm:py-6 px-4 sm:px-6 border-b border-[#E7E7E5]">
+        <div className="max-w-[1240px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6">
+          <Link href={ROUTES.PUBLIC.HOME} className="flex flex-col items-center lg:items-start text-center lg:text-left group shrink-0 max-w-full">
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3">
               {settings.logoUrl && settings.logoUrl !== '/logo.png' && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={settings.logoUrl}
                   alt={brandName}
-                  className="h-10 sm:h-12 w-auto max-w-[160px] rounded-lg object-contain shrink-0"
+                  className="h-9 sm:h-12 w-auto max-w-[140px] sm:max-w-[160px] rounded-lg object-contain shrink-0"
                 />
               )}
-              <span className="font-editorial text-4xl sm:text-5xl lg:text-[54px] font-bold text-[#171717] tracking-tight leading-none">
+              <span className="font-editorial text-3xl sm:text-5xl lg:text-[54px] font-bold text-[#171717] tracking-tight leading-none">
                 {brandName}
                 <span className="text-[#C62828]">.</span>
               </span>
             </div>
             {brandTagline && (
-              <span className="text-[11px] tracking-widest uppercase font-semibold text-[#737373] mt-2">
+              <span className="text-[10px] sm:text-[11px] tracking-widest uppercase font-semibold text-[#737373] mt-1.5 sm:mt-2">
                 {brandTagline}
               </span>
             )}
@@ -272,7 +272,7 @@ export default function Header() {
 
           {/* 728x90 Advertisement Slot (Configured via Admin -> System Settings -> Monetization & Ads) */}
           {settings.loaded && settings.headerAdsActive && settings.headerAdsTitle && (
-            <div className="w-full lg:max-w-[728px] min-h-[82px] sm:h-[90px] py-2.5 sm:py-0 rounded-lg bg-[#171717] text-white flex items-center justify-between px-4 sm:px-7 relative overflow-hidden border border-[#E7E7E5]/20">
+            <div className="w-full lg:max-w-[728px] min-h-[76px] sm:h-[90px] py-3 sm:py-0 rounded-lg bg-[#171717] text-white flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 px-4 sm:px-7 relative overflow-hidden border border-[#E7E7E5]/20">
               {settings.headerAdsBannerImg && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -281,8 +281,8 @@ export default function Header() {
                   className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
                 />
               )}
-              <div className="space-y-1 relative z-10 min-w-0 pr-3">
-                <div className="flex items-center gap-2">
+              <div className="space-y-1 relative z-10 min-w-0 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {settings.headerAdsBadge && (
                     <span className="text-[9px] uppercase font-bold tracking-widest text-[#EAB308] bg-[#EAB308]/15 px-2 py-0.5 rounded">
                       {settings.headerAdsBadge}
@@ -304,12 +304,12 @@ export default function Header() {
                 )}
               </div>
 
-              <div className="shrink-0 relative z-10 ml-3 sm:ml-4">
+              <div className="shrink-0 relative z-10">
                 <a
                   href={sponsorDestinationUrl}
                   target={sponsorDestinationUrl.startsWith('http') ? '_blank' : undefined}
                   rel={sponsorDestinationUrl.startsWith('http') ? 'nofollow sponsored noopener noreferrer' : undefined}
-                  className="bg-[#C62828] hover:bg-[#B71C1C] text-white font-semibold text-xs px-3.5 py-1.5 rounded transition inline-flex items-center gap-1.5"
+                  className="bg-[#C62828] hover:bg-[#B71C1C] text-white font-semibold text-xs px-3.5 py-2 sm:py-1.5 rounded transition inline-flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <span>{settings.headerAdsButtonText || 'Discover'}</span>
                   <ArrowRight size={12} />
@@ -322,15 +322,15 @@ export default function Header() {
 
       {/* 3. PRIMARY EDITORIAL NAVIGATION */}
       <nav className="bg-white border-b border-[#E7E7E5] sticky top-0 z-40">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <div className="hidden lg:flex items-center space-x-1">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="hidden lg:flex items-center space-x-1 overflow-x-auto no-scrollbar min-w-0">
             {navLinks.map((link) => {
               const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
               return (
                 <Link
                   key={`${link.label}-${link.href}`}
                   href={link.href}
-                  className={`text-xs font-semibold tracking-wider uppercase px-3.5 py-3 transition-colors border-b-2 ${
+                  className={`text-xs font-semibold tracking-wider uppercase px-3 xl:px-3.5 py-3 transition-colors border-b-2 whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'border-[#C62828] text-[#C62828]'
                       : 'border-transparent text-[#171717] hover:text-[#C62828]'
@@ -342,10 +342,10 @@ export default function Header() {
             })}
           </div>
 
-          <div className="lg:hidden py-2.5">
+          <div className="lg:hidden py-1.5">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 text-[#171717] hover:text-[#C62828] rounded flex items-center gap-1.5 text-xs font-semibold"
+              className="min-h-[40px] px-2 -ml-2 text-[#171717] hover:text-[#C62828] rounded-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X size={20} /> : <MenuIcon size={20} />}
@@ -353,11 +353,11 @@ export default function Header() {
             </button>
           </div>
 
-          <div className="relative py-2 flex items-center gap-2">
+          <div className="relative py-1.5 flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-1.5 rounded-lg border border-[#E7E7E5] text-[#737373] hover:text-[#171717] transition-colors flex items-center justify-center cursor-pointer"
+              className="min-h-[38px] min-w-[38px] p-1.5 rounded-lg border border-[#E7E7E5] text-[#737373] hover:text-[#171717] transition-colors flex items-center justify-center cursor-pointer"
               aria-label="Toggle dark mode"
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
@@ -365,7 +365,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-1.5 text-[#737373] hover:text-[#171717] transition-colors flex items-center gap-2 text-xs cursor-pointer"
+              className="min-h-[38px] px-2.5 py-1.5 text-[#737373] hover:text-[#171717] transition-colors flex items-center gap-2 text-xs cursor-pointer rounded-lg"
               aria-label="Search articles"
             >
               <Search size={16} />
@@ -385,12 +385,12 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles, lab reviews, buying guides, coupons..."
-                  className="w-full pl-10 pr-24 py-2 bg-white border border-[#E7E7E5] rounded-md text-xs sm:text-sm text-[#171717] focus:outline-none focus:border-[#171717]"
+                  className="w-full pl-10 pr-24 py-2.5 sm:py-2 bg-white border border-[#E7E7E5] rounded-md text-base sm:text-sm text-[#171717] focus:outline-none focus:border-[#171717]"
                   autoFocus
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 bg-[#171717] hover:bg-[#C62828] text-white text-xs font-medium px-3.5 py-1.5 rounded transition-colors"
+                  className="absolute right-1.5 bg-[#171717] hover:bg-[#C62828] text-white text-xs font-medium px-3.5 py-1.5 rounded transition-colors cursor-pointer"
                 >
                   Search
                 </button>
@@ -403,7 +403,7 @@ export default function Header() {
                       key={tag}
                       href={`${ROUTES.PUBLIC.SEARCH}?q=${encodeURIComponent(tag)}`}
                       onClick={() => setSearchOpen(false)}
-                      className="px-2.5 py-0.5 bg-white border border-[#E7E7E5] rounded-full text-[#171717] hover:border-[#C62828] hover:text-[#C62828] transition-colors"
+                      className="px-2.5 py-1 bg-white border border-[#E7E7E5] rounded-full text-[#171717] hover:border-[#C62828] hover:text-[#C62828] transition-colors"
                     >
                       #{tag}
                     </Link>
@@ -416,12 +416,12 @@ export default function Header() {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-[#E7E7E5] p-4 sm:p-5 bg-white space-y-4 animate-fadeIn shadow-lg">
+          <div className="lg:hidden border-t border-[#E7E7E5] p-4 sm:p-5 bg-white space-y-4 animate-fadeIn shadow-lg max-h-[calc(100dvh-4.5rem)] overflow-y-auto">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#C62828] mb-2 block">
                 Navigation
               </span>
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {navLinks.map((link) => {
                   const isActive =
                     pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
@@ -430,14 +430,14 @@ export default function Header() {
                       key={`${link.label}-${link.href}`}
                       href={link.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition ${
+                      className={`flex items-center justify-between min-h-[44px] px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition ${
                         isActive
                           ? 'bg-[#C62828]/10 text-[#C62828] border-l-2 border-[#C62828]'
                           : 'text-[#171717] hover:bg-[#F8F8F6] hover:text-[#C62828]'
                       }`}
                     >
-                      <span>{link.label}</span>
-                      <ArrowRight size={13} className="opacity-50" />
+                      <span className="truncate pr-2">{link.label}</span>
+                      <ArrowRight size={13} className="opacity-50 shrink-0" />
                     </Link>
                   );
                 })}
@@ -449,13 +449,13 @@ export default function Header() {
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#737373] mb-2 block">
                   About {brandName}
                 </span>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {siteLinks.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="px-2.5 py-1.5 text-xs text-[#737373] hover:text-[#171717] hover:bg-[#F8F8F6] rounded-md transition truncate"
+                      className="px-2.5 py-2 text-xs text-[#737373] hover:text-[#171717] hover:bg-[#F8F8F6] rounded-md transition truncate"
                     >
                       {link.label}
                     </Link>
@@ -504,20 +504,20 @@ export default function Header() {
           />
 
           <div className="max-w-[1240px] mx-auto flex items-center h-6 relative">
-            <div className="z-10 bg-[#F8F8F6] pr-3 shrink-0 flex items-center border-r border-[#E7E7E5] mr-3">
+            <div className="z-10 bg-[#F8F8F6] pr-2.5 sm:pr-3 shrink-0 flex items-center border-r border-[#E7E7E5] mr-2.5 sm:mr-3">
               <span className="bg-[#C62828] text-white font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded shrink-0 flex items-center gap-1 shadow-2xs whitespace-nowrap">
                 <Zap size={11} className="fill-white" />
                 <span>Flash News</span>
               </span>
             </div>
 
-            <div className="overflow-hidden flex-1 relative h-full flex items-center">
+            <div className="overflow-hidden flex-1 relative h-full flex items-center min-w-0">
               <div className="flash-news-track items-center text-xs">
                 {[...flashNews, ...flashNews].map((news, idx) => (
                   <Link
                     key={`${news.slug}-${idx}`}
                     href={ROUTES.PUBLIC.POST_DETAIL(news.slug)}
-                    className="inline-flex items-center text-xs sm:text-sm text-[#171717] hover:text-[#C62828] font-medium whitespace-nowrap transition-colors px-6 group shrink-0"
+                    className="inline-flex items-center text-xs sm:text-sm text-[#171717] hover:text-[#C62828] font-medium whitespace-nowrap transition-colors px-4 sm:px-6 group shrink-0"
                   >
                     <span className="relative flex h-2 w-2 mr-2.5 shrink-0 items-center justify-center">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75" />

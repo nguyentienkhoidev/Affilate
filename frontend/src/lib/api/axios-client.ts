@@ -53,12 +53,15 @@ const resolveApiBaseUrl = (): string => {
       'http://localhost:8080';
     return internalBase.replace(/\/api\/v1\/?$/, '');
   }
-  // In the browser: automatically match protocol or use relative origin to prevent mixed content
+  // In the browser: on production domains/IPs use same-origin gateway; keep localhost port override for local dev
   if (typeof window !== 'undefined') {
-    if (window.location.protocol === 'https:') {
-      if (process.env.NEXT_PUBLIC_API_URL?.startsWith('http://')) {
-        return window.location.origin;
-      }
+    const isLocalHost =
+      window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocalHost) {
+      return window.location.origin;
+    }
+    if (window.location.protocol === 'https:' && process.env.NEXT_PUBLIC_API_URL?.startsWith('http://')) {
+      return window.location.origin;
     }
     const publicUrl = process.env.NEXT_PUBLIC_API_URL;
     if (publicUrl && publicUrl.trim() !== '') {

@@ -43,7 +43,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* =========================================================
@@ -175,6 +175,57 @@ html.dark .article-content h3,
 html.dark .article-content h4,
 html.dark .article-content strong {
   color: #F8FAFC !important;
+}
+
+/* Responsive Safeguards for Rich Editorial Content & Widgets */
+.editorial-article-body,
+.article-content,
+.prose {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.editorial-article-body table,
+.article-content table,
+.prose table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editorial-article-body iframe,
+.editorial-article-body video,
+.editorial-article-body embed,
+.article-content iframe,
+.article-content video,
+.prose iframe,
+.prose video {
+  max-width: 100%;
+}
+
+.editorial-article-body pre,
+.article-content pre,
+.prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.editorial-box {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .editorial-box {
+    padding: 1rem !important;
+  }
+
+  .editorial-box[data-box-type="deal"] > div {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 }
 
 [id] {

@@ -109,7 +109,7 @@ function SearchPageContent() {
       <div className="max-w-7xl mx-auto px-4 space-y-8">
 
         {/* Search Header */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-8 shadow-sm space-y-6">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               Search Discounts &amp; Editorial Reviews ({currentMonthYear})
@@ -127,7 +127,7 @@ function SearchPageContent() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search stores, promo codes, or product reviews..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#c62828]/20 focus:border-[#c62828] shadow-inner"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3 sm:py-3.5 text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#c62828]/20 focus:border-[#c62828] shadow-inner"
               autoFocus
             />
           </div>
@@ -253,7 +253,7 @@ function SearchPageContent() {
                       key={o.id}
                       className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
                           {o.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -270,27 +270,27 @@ function SearchPageContent() {
                           )}
                         </div>
 
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] font-black text-[#c62828] bg-red-50 border border-red-100 px-2 py-0.5 rounded shrink-0">
                               {o.discount}
                             </span>
                             {o.storeSlug && (
                               <Link
                                 href={ROUTES.PUBLIC.STORE_DETAIL(o.storeSlug)}
-                                className="text-[11px] font-bold text-slate-500 hover:text-[#c62828] transition"
+                                className="text-[11px] font-bold text-slate-500 hover:text-[#c62828] transition truncate"
                               >
                                 {o.storeName}
                               </Link>
                             )}
                           </div>
-                          <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">
+                          <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 sm:line-clamp-1">
                             {o.title}
                           </h3>
                         </div>
                       </div>
 
-                      <div className="shrink-0">
+                      <div className="shrink-0 w-full sm:w-auto">
                         <GetCodeButton
                           code={o.code}
                           isCode={o.isCode}

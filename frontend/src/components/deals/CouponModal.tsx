@@ -69,7 +69,7 @@ export default function CouponModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl relative overflow-hidden border border-slate-200/90"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl relative overflow-y-auto max-h-[90dvh] border border-slate-200/90"
       >
         {/* TOP DARK BRAND HEADER */}
         <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white px-5 py-4 flex items-center justify-between gap-3">
@@ -141,16 +141,16 @@ export default function CouponModal({
           {/* Promo Code Box or Instant Deal Banner */}
           {offer.code ? (
             <div className="bg-red-50/40 border-2 border-dashed border-[#c62828]/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center justify-between sm:block">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
+              <div className="flex items-center justify-between sm:block gap-2 min-w-0">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block shrink-0">
                   PROMO CODE
                 </span>
-                <span className="font-mono font-black text-2xl text-slate-950 tracking-wider select-all">
+                <span className="font-mono font-black text-lg sm:text-2xl text-slate-950 tracking-wider select-all break-all">
                   {offer.code}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleCopy}

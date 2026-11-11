@@ -227,12 +227,12 @@ export default function StoreAffiliatePage() {
       <div className="max-w-7xl mx-auto px-4 space-y-6">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-[#c62828] transition">Home</Link>
-          <ChevronRight size={12} />
+          <ChevronRight size={12} className="shrink-0" />
           <Link href={ROUTES.PUBLIC.STORES} className="hover:text-[#c62828] transition">Stores</Link>
-          <ChevronRight size={12} />
-          <span className="text-slate-800 font-semibold">{storeName} Coupons</span>
+          <ChevronRight size={12} className="shrink-0" />
+          <span className="text-slate-800 font-semibold truncate max-w-[180px] sm:max-w-xs">{storeName} Coupons</span>
         </nav>
 
         {/* Main Affiliate Layout: Sidebar (4 cols) + Coupon Stream (8 cols) */}
@@ -290,14 +290,26 @@ export default function StoreAffiliatePage() {
                   {cleanDescription}
                 </p>
 
-                <button
-                  type="button"
-                  onClick={() => setAlertModalOpen(true)}
-                  className="w-full py-2.5 px-4 rounded-lg border border-[#c62828] text-[#c62828] hover:bg-[#fde8e8] font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                >
-                  <Bell size={14} />
-                  <span>Get Coupon Alert</span>
-                </button>
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setAlertModalOpen(true)}
+                    className="w-full py-2.5 px-4 rounded-lg border border-[#c62828] text-[#c62828] hover:bg-[#fde8e8] font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <Bell size={14} />
+                    <span>Get Coupon Alert</span>
+                  </button>
+
+                  <a
+                    href={storeAffiliateUrl}
+                    target="_blank"
+                    rel="nofollow sponsored noopener noreferrer"
+                    className="lg:hidden w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-2 text-center"
+                  >
+                    <span>Visit Official {storeName}</span>
+                    <ExternalLink size={13} />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -351,7 +363,7 @@ export default function StoreAffiliatePage() {
           <div className="lg:col-span-8 space-y-4">
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1.5 shadow-2xs">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
               {[
                 { id: 'all' as const, label: `All (${coupons.length})` },
                 { id: 'codes' as const, label: `Codes (${coupons.filter((c) => c.isCode).length})` },
@@ -364,7 +376,7 @@ export default function StoreAffiliatePage() {
                     setActiveTab(tab.id);
                     setCouponPage(1);
                   }}
-                  className={`px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer ${
+                  className={`px-3.5 sm:px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === tab.id
                       ? 'bg-[#c62828] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -393,9 +405,9 @@ export default function StoreAffiliatePage() {
                     key={coupon.id}
                     className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
 
-                      <div className="relative w-full sm:w-28 h-32 sm:h-28 shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <div className="relative w-full sm:w-28 h-36 sm:h-28 shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                         {coupon.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -483,7 +495,7 @@ export default function StoreAffiliatePage() {
                 )}
               </span>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setCouponPage((p) => Math.max(1, p - 1))}
@@ -525,42 +537,42 @@ export default function StoreAffiliatePage() {
         <div className="w-full space-y-6 pt-2">
           {/* 1. Trust Value Props Bar */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-              <div className="flex items-center gap-3 pt-2 md:pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-slate-100">
+              <div className="flex items-center gap-3 lg:pr-4">
                 <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
                   <ShieldCheck size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h5 className="text-xs font-bold text-slate-900 leading-tight">Hand-Tested Coupons</h5>
                   <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Verified checkout carts</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2 md:pt-0 md:pl-4">
+              <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 lg:px-4">
                 <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
                   <Clock size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h5 className="text-xs font-bold text-slate-900 leading-tight">Regularly Audited</h5>
                   <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Live database sync</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2 md:pt-0 md:pl-4">
+              <div className="flex items-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:px-4">
                 <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
                   <Tag size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h5 className="text-xs font-bold text-slate-900 leading-tight">Direct Partner Links</h5>
                   <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Official merchant offers</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2 md:pt-0 md:pl-4">
+              <div className="flex items-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:pl-4">
                 <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
                   <Users size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h5 className="text-xs font-bold text-slate-900 leading-tight">Editorial Standards</h5>
                   <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Zero fabricated codes</p>
                 </div>
