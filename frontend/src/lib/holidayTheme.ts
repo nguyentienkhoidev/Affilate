@@ -320,6 +320,7 @@ export interface HolidayRule {
   startDay?: number;
   endMonth?: number;
   endDay?: number;
+  yearDates?: Record<number, { startMonth: number; startDay: number; endMonth: number; endDay: number }>;
   month?: number;
   weekday?: number; // 0=Sun..6=Sat
   nth?: number; // 1..4 or -1 for last
@@ -714,9 +715,15 @@ export const DEFAULT_HOLIDAY_RULES: HolidayRule[] = [
     countries: ['VN', 'SG', 'KR'],
     matcherType: 'fixed',
     startMonth: 1,
-    startDay: 22,
+    startDay: 20,
     endMonth: 2,
-    endDay: 15,
+    endDay: 20,
+    yearDates: {
+      2026: { startMonth: 2, startDay: 10, endMonth: 2, endDay: 22 },
+      2027: { startMonth: 1, startDay: 30, endMonth: 2, endDay: 11 },
+      2028: { startMonth: 1, startDay: 19, endMonth: 1, endDay: 31 },
+      2029: { startMonth: 2, startDay: 6, endMonth: 2, endDay: 18 },
+    },
     enabled: true,
   },
   {
@@ -728,9 +735,14 @@ export const DEFAULT_HOLIDAY_RULES: HolidayRule[] = [
     countries: ['KR'],
     matcherType: 'fixed',
     startMonth: 9,
-    startDay: 15,
+    startDay: 14,
     endMonth: 9,
-    endDay: 20,
+    endDay: 27,
+    yearDates: {
+      2026: { startMonth: 9, startDay: 21, endMonth: 9, endDay: 27 },
+      2027: { startMonth: 9, startDay: 12, endMonth: 9, endDay: 17 },
+      2028: { startMonth: 9, startDay: 30, endMonth: 10, endDay: 5 },
+    },
     customRibbonText: 'Korea Chuseok Holiday Sale — Verified Gift Sets & Beauty Promo Codes',
     enabled: true,
   },
@@ -979,9 +991,14 @@ export const DEFAULT_HOLIDAY_RULES: HolidayRule[] = [
     countries: ['IN'],
     matcherType: 'fixed',
     startMonth: 10,
-    startDay: 20,
+    startDay: 18,
     endMonth: 11,
-    endDay: 5,
+    endDay: 10,
+    yearDates: {
+      2026: { startMonth: 10, startDay: 25, endMonth: 11, endDay: 10 },
+      2027: { startMonth: 10, startDay: 20, endMonth: 11, endDay: 2 },
+      2028: { startMonth: 10, startDay: 10, endMonth: 10, endDay: 22 },
+    },
     enabled: true,
   },
   {
@@ -1260,9 +1277,14 @@ export const DEFAULT_HOLIDAY_RULES: HolidayRule[] = [
     countries: ['IN'],
     matcherType: 'fixed',
     startMonth: 3,
-    startDay: 10,
+    startDay: 1,
     endMonth: 3,
-    endDay: 15,
+    endDay: 24,
+    yearDates: {
+      2026: { startMonth: 3, startDay: 1, endMonth: 3, endDay: 5 },
+      2027: { startMonth: 3, startDay: 19, endMonth: 3, endDay: 23 },
+      2028: { startMonth: 3, startDay: 8, endMonth: 3, endDay: 12 },
+    },
     customRibbonText: 'Holi Festival Sale (India) — Fashion, Beauty & Electronics Deals',
     enabled: true,
   },
@@ -1453,10 +1475,11 @@ export function doesRuleMatchDate(rule: HolidayRule, local: LocalDateParts): boo
   const currentDayNum = toUtcDayNumber(local.year, local.month, local.day);
 
   if (rule.matcherType === 'fixed') {
-    const sm = rule.startMonth || 1;
-    const sd = rule.startDay || 1;
-    const em = rule.endMonth || sm;
-    const ed = rule.endDay || sd;
+    const yearOverride = rule.yearDates?.[local.year];
+    const sm = yearOverride?.startMonth || rule.startMonth || 1;
+    const sd = yearOverride?.startDay || rule.startDay || 1;
+    const em = yearOverride?.endMonth || rule.endMonth || sm;
+    const ed = yearOverride?.endDay || rule.endDay || sd;
     if (sm < em || (sm === em && sd <= ed)) {
       const startNum = toUtcDayNumber(local.year, sm, sd);
       const endNum = toUtcDayNumber(local.year, em, ed);
