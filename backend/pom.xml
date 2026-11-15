@@ -102,6 +102,13 @@
             <version>${minio.version}</version>
         </dependency>
 
+        <!-- MaxMind GeoIP2 Country Lookup -->
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+
         <!-- Lombok & MapStruct -->
         <dependency>
             <groupId>org.projectlombok</groupId>

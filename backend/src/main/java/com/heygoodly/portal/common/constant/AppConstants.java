@@ -56,4 +56,5 @@ public final class AppConstants {
     public static final String DEFAULT_LOOPBACK_IPV4 = "127.0.0.1";
     public static final String DEFAULT_LOOPBACK_IPV6 = "::1";
     public static final String DEFAULT_LOOPBACK_IPV6_FULL = "0:0:0:0:0:0:0:1";
+    public static final String DEFAULT_REVIEWER_NAME = "Verified Shopper";
 }

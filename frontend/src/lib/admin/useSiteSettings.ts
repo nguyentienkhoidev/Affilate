@@ -15,6 +15,11 @@ export interface SiteSettings {
   contactAddress: string;
   footerCopyright: string;
   affiliateDisclosure: string;
+  holidayThemeMode: 'off' | 'auto' | 'manual';
+  holidayThemeManual: string;
+  holidayEffectsEnabled: boolean;
+  holidayCountryOverrides: string;
+  holidayCustomRules: string;
 
   // SEO & Search Engine Ownership Verification
   metaTitle: string;
@@ -72,6 +77,11 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   contactAddress: '',
   footerCopyright: '',
   affiliateDisclosure: '',
+  holidayThemeMode: 'off',
+  holidayThemeManual: 'none',
+  holidayEffectsEnabled: true,
+  holidayCountryOverrides: '{}',
+  holidayCustomRules: '[]',
 
   metaTitle: '',
   metaDescription: '',
@@ -136,6 +146,14 @@ function mapResponseToSettings(map: Record<string, string>): Partial<SiteSetting
   if (map.contact_address !== undefined) result.contactAddress = map.contact_address;
   if (map.footer_copyright !== undefined) result.footerCopyright = map.footer_copyright;
   if (map.affiliate_disclosure !== undefined) result.affiliateDisclosure = map.affiliate_disclosure;
+  if (map.holiday_theme_mode !== undefined) {
+    const mode = map.holiday_theme_mode;
+    result.holidayThemeMode = mode === 'auto' || mode === 'manual' ? mode : 'off';
+  }
+  if (map.holiday_theme_manual !== undefined) result.holidayThemeManual = map.holiday_theme_manual || 'none';
+  if (map.holiday_effects_enabled !== undefined) result.holidayEffectsEnabled = map.holiday_effects_enabled !== 'false';
+  if (map.holiday_country_overrides !== undefined) result.holidayCountryOverrides = map.holiday_country_overrides || '{}';
+  if (map.holiday_custom_rules !== undefined) result.holidayCustomRules = map.holiday_custom_rules || '[]';
 
   if (map.meta_title !== undefined || map.default_meta_title !== undefined) {
     result.metaTitle = map.meta_title || map.default_meta_title || '';
@@ -192,6 +210,11 @@ function mapSettingsToRequest(settings: SiteSettings): Record<string, string> {
     contact_address: settings.contactAddress,
     footer_copyright: settings.footerCopyright,
     affiliate_disclosure: settings.affiliateDisclosure,
+    holiday_theme_mode: settings.holidayThemeMode,
+    holiday_theme_manual: settings.holidayThemeManual,
+    holiday_effects_enabled: String(Boolean(settings.holidayEffectsEnabled)),
+    holiday_country_overrides: settings.holidayCountryOverrides || '{}',
+    holiday_custom_rules: settings.holidayCustomRules || '[]',
     meta_title: settings.metaTitle,
     meta_description: settings.metaDescription,
     canonical_url: settings.canonicalUrl,

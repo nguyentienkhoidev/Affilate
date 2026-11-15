@@ -58,6 +58,13 @@ public class OfferEntity extends BaseEntity {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = com.heygoodly.portal.common.constant.AppConstants.DEFAULT_SORT_ORDER;
 
+    @Builder.Default
+    @Column(name = "has_expiration", nullable = false)
+    private Boolean hasExpiration = false;
+
+    @Column(name = "start_at")
+    private Instant startAt;
+
     @Column(name = "expire_at")
     private Instant expireAt;
 

@@ -48,6 +48,7 @@ export const ROUTES = {
     SUBSCRIBERS: '/admin/subscribers',
     MEDIA: '/admin/media',
     SETTINGS: '/admin/settings',
+    HOLIDAYS: '/admin/holidays',
     TRACING: '/admin/tracing',
     PROFILE: '/admin/profile',
   },

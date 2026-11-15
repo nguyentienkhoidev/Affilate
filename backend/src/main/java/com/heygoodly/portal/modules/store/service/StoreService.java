@@ -2,9 +2,12 @@ package com.heygoodly.portal.modules.store.service;
 
 import com.heygoodly.portal.common.dto.PageResponse;
 import com.heygoodly.portal.modules.store.dto.request.StoreRequest;
+import com.heygoodly.portal.modules.store.dto.response.ReviewerProfileDto;
 import com.heygoodly.portal.modules.store.dto.response.StoreDetailResponse;
 import com.heygoodly.portal.modules.store.dto.response.StoreSummaryResponse;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface StoreService {
     PageResponse<StoreSummaryResponse> getPublicStores(Pageable pageable, String search, String letter, String category, Boolean featured, String tag);
@@ -28,4 +31,6 @@ public interface StoreService {
     StoreDetailResponse cloneStoreByIdOrSlug(String idOrSlug);
     void delete(Long id);
     void deleteByIdOrSlug(String idOrSlug);
+    void reorder(List<Long> orderedIds);
+    List<ReviewerProfileDto> searchReviewerProfiles(String search);
 }

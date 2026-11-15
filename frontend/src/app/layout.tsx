@@ -18,6 +18,7 @@ const newsreader = Newsreader({
 });
 
 import { SITE_URL } from '@/constants/site';
+import { parseCustomHeadHtml } from '@/components/seo/parseCustomHeadHtml';
 
 const BACKEND_BASE = (
   process.env.BACKEND_INTERNAL_URL ||
@@ -31,19 +32,23 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export async function generateMetadata(): Promise<Metadata> {
-  let map: Record<string, string> = {};
+async function fetchPublicSettingsMap(): Promise<Record<string, string>> {
   try {
     const res = await fetch(`${BACKEND_BASE}/api/v1/settings/public`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 30 },
     });
     if (res.ok) {
       const json = await res.json();
-      map = json?.data?.settings || json?.data || {};
+      return json?.data?.settings || json?.data || {};
     }
   } catch {
     // Fallback gracefully if backend is temporarily unreachable during build
   }
+  return {};
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const map = await fetchPublicSettingsMap();
 
   const siteName = map.site_name || 'HeyGoodly';
   const title = map.meta_title || map.default_meta_title || `${siteName} — Independent Product Reviews & Smart Deals Journal`;
@@ -73,11 +78,14 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const map = await fetchPublicSettingsMap();
+  const customHeadNodes = parseCustomHeadHtml(map.custom_head_code);
+
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${newsreader.variable}`}>
       <head>
@@ -86,6 +94,7 @@ export default function RootLayout({
             __html: `try{var m=localStorage.getItem('heygoodly:theme');if(m==='dark'){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.colorScheme='dark';}}catch(e){}`,
           }}
         />
+        {customHeadNodes}
       </head>
       <body className={`${inter.className} min-h-screen bg-[#F8F8F6] text-[#171717] antialiased selection:bg-[#c62828] selection:text-white transition-colors duration-200`}>
         <ThemeProvider>

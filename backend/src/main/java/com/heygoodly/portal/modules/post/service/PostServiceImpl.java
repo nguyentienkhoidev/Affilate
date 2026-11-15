@@ -852,6 +852,13 @@ public class PostServiceImpl implements PostService {
         }
     }
 
+    @Override
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        com.heygoodly.portal.common.util.SortOrderUtils.reorderEntities(
+                orderedIds, postRepository, PostEntity::getId, PostEntity::setSortOrder);
+    }
+
     private String serializeJson(Object value) {
         if (value == null) {
             return null;

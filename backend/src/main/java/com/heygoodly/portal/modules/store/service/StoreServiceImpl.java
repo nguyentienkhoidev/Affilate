@@ -14,10 +14,15 @@ import com.heygoodly.portal.modules.category.entity.CategoryEntity;
 import com.heygoodly.portal.modules.category.repository.CategoryRepository;
 import com.heygoodly.portal.modules.offer.repository.OfferRepository;
 import com.heygoodly.portal.modules.store.dto.request.StoreRequest;
+import com.heygoodly.portal.modules.store.dto.response.ReviewerProfileDto;
 import com.heygoodly.portal.modules.store.dto.response.StoreDetailResponse;
 import com.heygoodly.portal.modules.store.dto.response.StoreSummaryResponse;
+import com.heygoodly.portal.modules.store.entity.ReviewerProfileEntity;
 import com.heygoodly.portal.modules.store.entity.StoreEntity;
+import com.heygoodly.portal.modules.store.entity.StoreReviewEntity;
+import com.heygoodly.portal.modules.store.repository.ReviewerProfileRepository;
 import com.heygoodly.portal.modules.store.repository.StoreRepository;
+import com.heygoodly.portal.modules.store.repository.StoreReviewRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +51,8 @@ import java.util.stream.Collectors;
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
+    private final StoreReviewRepository storeReviewRepository;
+    private final ReviewerProfileRepository reviewerProfileRepository;
     private final CategoryRepository categoryRepository;
     private final OfferRepository offerRepository;
     private final com.heygoodly.portal.modules.tag.service.TagService tagService;
@@ -257,6 +264,7 @@ public class StoreServiceImpl implements StoreService {
 
         String popularSearchesJson = serializeJson(request.getPopularSearches());
         String faqsJson = serializeJson(request.getFaqs());
+        String ratingBreakdownJson = serializeJson(request.getRatingBreakdown());
 
         StoreEntity store = StoreEntity.builder()
                 .name(request.getName().trim())
@@ -288,15 +296,21 @@ public class StoreServiceImpl implements StoreService {
                 .metaDescription(request.getMetaDescription())
                 .popularSearches(popularSearchesJson)
                 .faqs(faqsJson)
+                .ratingBreakdown(ratingBreakdownJson)
                 .build();
 
-        store.setCreatedBy(SecurityUtils.getCurrentUserEmail().orElse(AppConstants.SYSTEM_USER));
+        String actor = SecurityUtils.getCurrentUserEmail().orElse(AppConstants.SYSTEM_USER);
+        store.setCreatedBy(actor);
         StoreEntity saved = storeRepository.save(store);
 
         if (request.getTags() != null) {
             List<String> syncedTags = tagService.syncEntityTags(EntityFieldConstants.TYPE_STORE, saved.getId(), request.getTags());
             saved.setTags(serializeJson(syncedTags));
             saved = storeRepository.save(saved);
+        }
+
+        if (request.getCustomerReviews() != null) {
+            syncStoreReviews(saved.getId(), request.getCustomerReviews(), actor);
         }
 
         return mapToDetail(saved);
@@ -363,12 +377,19 @@ public class StoreServiceImpl implements StoreService {
         if (request.getFaqs() != null) {
             store.setFaqs(serializeJson(request.getFaqs()));
         }
+        if (request.getRatingBreakdown() != null) {
+            store.setRatingBreakdown(serializeJson(request.getRatingBreakdown()));
+        }
         if (request.getTags() != null) {
             List<String> syncedTags = tagService.syncEntityTags(EntityFieldConstants.TYPE_STORE, store.getId(), request.getTags());
             store.setTags(serializeJson(syncedTags));
         }
 
         StoreEntity updated = storeRepository.save(store);
+        if (request.getCustomerReviews() != null) {
+            String actor = SecurityUtils.getCurrentUserEmail().orElse(AppConstants.SYSTEM_USER);
+            syncStoreReviews(updated.getId(), request.getCustomerReviews(), actor);
+        }
         return mapToDetail(updated);
     }
 
@@ -413,7 +434,8 @@ public class StoreServiceImpl implements StoreService {
                 Boolean.TRUE.equals(saved.getIsActive()),
                 Boolean.TRUE.equals(saved.getIsFeatured()),
                 activeOffers,
-                tags != null ? tags : Collections.emptyList()
+                tags != null ? tags : Collections.emptyList(),
+                saved.getSortOrder() != null ? saved.getSortOrder() : com.heygoodly.portal.common.constant.AppConstants.DEFAULT_SORT_ORDER
         );
     }
 
@@ -572,7 +594,118 @@ public class StoreServiceImpl implements StoreService {
                     .map(CategoryEntity::getName)
                     .orElse(null);
         }
-        return storeMapper.toDetailResponse(s, catName);
+        List<StoreReviewEntity> reviews = storeReviewRepository.findByStoreIdAndIsDeletedFalseOrderBySortOrderAscIdAsc(s.getId());
+        return storeMapper.toDetailResponse(s, catName, reviews);
+    }
+
+    @Override
+    public List<ReviewerProfileDto> searchReviewerProfiles(String search) {
+        String trimmed = NullSafeUtils.safeTrim(search);
+        List<ReviewerProfileEntity> profiles = trimmed.isEmpty()
+                ? reviewerProfileRepository.findTop20ByIsDeletedFalseOrderByUpdatedAtDescIdDesc()
+                : reviewerProfileRepository.findTop20ByIsDeletedFalseAndNameContainingIgnoreCaseOrderByNameAsc(trimmed);
+        return profiles.stream()
+                .map(p -> new ReviewerProfileDto(
+                        p.getId(),
+                        p.getName(),
+                        p.getAvatarUrl(),
+                        Boolean.TRUE.equals(p.getIsVerified())
+                ))
+                .toList();
+    }
+
+    private void syncStoreReviews(Long storeId, List<StoreRequest.StoreReviewDto> reviewDtos, String actor) {
+        storeReviewRepository.deleteByStoreId(storeId);
+        if (reviewDtos == null || reviewDtos.isEmpty()) {
+            return;
+        }
+
+        // Batch-fetch & upsert reusable reviewer profiles (zero N+1)
+        Set<String> lowerNames = new HashSet<>();
+        for (StoreRequest.StoreReviewDto dto : reviewDtos) {
+            String trimmedName = NullSafeUtils.safeTrim(dto.getReviewerName());
+            if (!trimmedName.isEmpty() && !trimmedName.equalsIgnoreCase(AppConstants.DEFAULT_REVIEWER_NAME)) {
+                lowerNames.add(trimmedName.toLowerCase());
+            }
+        }
+
+        Map<String, ReviewerProfileEntity> profileMap = new java.util.HashMap<>();
+        if (!lowerNames.isEmpty()) {
+            for (ReviewerProfileEntity existing : reviewerProfileRepository.findByLowerNames(lowerNames)) {
+                profileMap.put(existing.getName().toLowerCase(), existing);
+            }
+            List<ReviewerProfileEntity> profilesToSave = new ArrayList<>();
+            for (StoreRequest.StoreReviewDto dto : reviewDtos) {
+                String trimmedName = NullSafeUtils.safeTrim(dto.getReviewerName());
+                if (trimmedName.isEmpty() || trimmedName.equalsIgnoreCase(AppConstants.DEFAULT_REVIEWER_NAME)) {
+                    continue;
+                }
+                String key = trimmedName.toLowerCase();
+                String avatar = NullSafeUtils.safeTrim(dto.getReviewerAvatar());
+                boolean verified = dto.getIsVerified() == null || Boolean.TRUE.equals(dto.getIsVerified());
+
+                ReviewerProfileEntity profile = profileMap.get(key);
+                if (profile == null) {
+                    profile = ReviewerProfileEntity.builder()
+                            .name(trimmedName)
+                            .avatarUrl(avatar.isEmpty() ? null : avatar)
+                            .isVerified(verified)
+                            .build();
+                    profile.setCreatedBy(actor);
+                    profileMap.put(key, profile);
+                    profilesToSave.add(profile);
+                } else {
+                    boolean changed = false;
+                    if (!avatar.isEmpty() && !avatar.equals(profile.getAvatarUrl())) {
+                        profile.setAvatarUrl(avatar);
+                        changed = true;
+                    }
+                    if (Boolean.TRUE.equals(profile.getIsVerified()) != verified) {
+                        profile.setIsVerified(verified);
+                        changed = true;
+                    }
+                    if (changed) {
+                        profilesToSave.add(profile);
+                    }
+                }
+            }
+            if (!profilesToSave.isEmpty()) {
+                for (ReviewerProfileEntity savedProfile : reviewerProfileRepository.saveAll(profilesToSave)) {
+                    profileMap.put(savedProfile.getName().toLowerCase(), savedProfile);
+                }
+            }
+        }
+
+        List<StoreReviewEntity> entities = new ArrayList<>();
+        for (int i = 0; i < reviewDtos.size(); i++) {
+            StoreRequest.StoreReviewDto dto = reviewDtos.get(i);
+            String reviewerName = NullSafeUtils.safeTrim(dto.getReviewerName());
+            String comment = NullSafeUtils.safeTrim(dto.getComment());
+            if (reviewerName.isEmpty() && comment.isEmpty()) {
+                continue;
+            }
+            int boundedRating = dto.getRating() != null ? Math.min(5, Math.max(1, dto.getRating())) : 5;
+            ReviewerProfileEntity linkedProfile = reviewerName.isEmpty() ? null : profileMap.get(reviewerName.toLowerCase());
+            Long profileId = linkedProfile != null ? linkedProfile.getId() : dto.getReviewerProfileId();
+
+            StoreReviewEntity entity = StoreReviewEntity.builder()
+                    .storeId(storeId)
+                    .reviewerProfileId(profileId)
+                    .reviewerName(reviewerName.isEmpty() ? AppConstants.DEFAULT_REVIEWER_NAME : reviewerName)
+                    .reviewerAvatar(NullSafeUtils.safeTrim(dto.getReviewerAvatar()))
+                    .isVerified(dto.getIsVerified() == null || Boolean.TRUE.equals(dto.getIsVerified()))
+                    .rating(boundedRating)
+                    .reviewDateLabel(NullSafeUtils.safeTrim(dto.getReviewDateLabel()))
+                    .comment(comment)
+                    .sortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : i)
+                    .isActive(dto.getIsActive() == null || Boolean.TRUE.equals(dto.getIsActive()))
+                    .build();
+            entity.setCreatedBy(actor);
+            entities.add(entity);
+        }
+        if (!entities.isEmpty()) {
+            storeReviewRepository.saveAll(entities);
+        }
     }
 
     private String serializeJson(Object object) {
@@ -583,6 +716,13 @@ public class StoreServiceImpl implements StoreService {
             log.warn("Failed to serialize json: {}", e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        com.heygoodly.portal.common.util.SortOrderUtils.reorderEntities(
+                orderedIds, storeRepository, StoreEntity::getId, StoreEntity::setSortOrder);
     }
 
     private <T> T deserializeJson(String json, TypeReference<T> typeRef) {

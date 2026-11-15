@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Calendar, Infinity as InfinityIcon } from 'lucide-react';
 import AdminFormPage, {
   FormLoading,
   FormNotFound,
@@ -12,6 +12,7 @@ import AdminFormPage, {
 } from '@/components/admin/AdminFormPage';
 import ImageUpload from '@/components/admin/ImageUpload';
 import TagInput from '@/components/admin/TagInput';
+import DisplayPositionPicker from '@/components/admin/DisplayPositionPicker';
 import { ROUTES } from '@/constants/routes';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { apiClient } from '@/lib/api/axios-client';
@@ -34,6 +35,10 @@ interface OfferFormState {
   terms: string;
   imageUrl: string;
   tags?: string[];
+  hasExpiration: boolean;
+  startDate: string;
+  expireDate: string;
+  sortOrder: number;
 }
 
 const FORM_ID = 'offer-form';
@@ -81,6 +86,10 @@ function OfferFormContent({ id }: { id?: string }) {
             terms: data.description || 'Valid on regular priced items.',
             imageUrl: data.image || (data as any).imageUrl || undefined,
             tags: Array.isArray(data.tags) ? data.tags : [],
+            hasExpiration: Boolean(data.hasExpiration || data.startAt || data.expireAt),
+            startAt: data.startAt ?? null,
+            expireAt: data.expireAt ?? null,
+            sortOrder: data.sortOrder ?? 9999,
           };
           setOfferData(mapped);
         }
@@ -116,6 +125,10 @@ function OfferFormContent({ id }: { id?: string }) {
         terms: offerData.terms || 'Valid on regular priced items.',
         imageUrl: offerData.imageUrl || '',
         tags: offerData.tags || [],
+        hasExpiration: Boolean(offerData.hasExpiration || offerData.startAt || offerData.expireAt),
+        startDate: offerData.startAt ? new Date(offerData.startAt).toISOString().slice(0, 10) : '',
+        expireDate: offerData.expireAt ? new Date(offerData.expireAt).toISOString().slice(0, 10) : '',
+        sortOrder: offerData.sortOrder ?? 9999,
       }
     : {
         storeId: undefined,
@@ -132,6 +145,10 @@ function OfferFormContent({ id }: { id?: string }) {
         terms: 'Valid on regular priced items.',
         imageUrl: '',
         tags: [],
+        hasExpiration: false,
+        startDate: '',
+        expireDate: '',
+        sortOrder: 9999,
       };
 
   return <OfferFormInner key={offerData?.id ?? 'new'} id={id} existing={offerData ?? undefined} initial={initial} />;
@@ -183,6 +200,21 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
     const selectedStore = stores.find((s) => s.id === form.storeId);
     const storeSlug = selectedStore ? selectedStore.slug : form.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
+    if (form.hasExpiration && form.startDate && form.expireDate && form.expireDate < form.startDate) {
+      toast.error('End date must be on or after start date.');
+      return;
+    }
+
+    const startAtIso =
+      form.hasExpiration && form.startDate.trim()
+        ? new Date(`${form.startDate.trim()}T00:00:00`).toISOString()
+        : null;
+
+    const expireAtIso =
+      form.hasExpiration && form.expireDate.trim()
+        ? new Date(`${form.expireDate.trim()}T23:59:59`).toISOString()
+        : null;
+
     const backendPayload: AdminOfferPayload = {
       storeId: Number(form.storeId),
       name: form.title.trim(),
@@ -192,9 +224,12 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
       description: form.terms.trim() || null,
       isVerified: form.isVerified,
       isActive: form.isActive,
-      sortOrder: 9999,
+      sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 9999,
       image: form.imageUrl?.trim() || null,
       tags: form.tags || [],
+      hasExpiration: form.hasExpiration,
+      startAt: startAtIso,
+      expireAt: expireAtIso,
     };
 
     try {
@@ -387,6 +422,117 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
                 />
               </div>
             </FormSection>
+
+            {/* Offer Expiration / Validity */}
+            <FormSection
+              title="Offer Expiration"
+              description="Choose whether this offer runs indefinitely or within a custom date range."
+            >
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, hasExpiration: false, startDate: '', expireDate: '' })}
+                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      !form.hasExpiration
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-2xs'
+                        : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <InfinityIcon size={14} />
+                    <span>No Expiration</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const defaultEnd =
+                        form.expireDate ||
+                        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+                      setForm({
+                        ...form,
+                        hasExpiration: true,
+                        startDate: form.startDate || today,
+                        expireDate: defaultEnd,
+                      });
+                    }}
+                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      form.hasExpiration
+                        ? 'bg-rose-50 border-[#C62828] text-[#C62828] shadow-2xs'
+                        : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Calendar size={14} />
+                    <span>Date Range</span>
+                  </button>
+                </div>
+
+                {form.hasExpiration ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className={labelClass}>From Date</label>
+                        <input
+                          type="date"
+                          value={form.startDate}
+                          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className={labelClass}>To Date (Expires)</label>
+                        <input
+                          type="date"
+                          value={form.expireDate}
+                          min={form.startDate || undefined}
+                          onChange={(e) => setForm({ ...form, expireDate: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[7, 30, 90].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => {
+                            const baseMs = form.startDate
+                              ? new Date(`${form.startDate}T00:00:00`).getTime()
+                              : Date.now();
+                            const startStr = form.startDate || new Date().toISOString().slice(0, 10);
+                            const target = new Date(baseMs + days * 24 * 60 * 60 * 1000)
+                              .toISOString()
+                              .slice(0, 10);
+                            setForm({ ...form, hasExpiration: true, startDate: startStr, expireDate: target });
+                          }}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                        >
+                          +{days} days
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    Ongoing offer — no expiration date will be shown on the store page.
+                  </p>
+                )}
+              </div>
+            </FormSection>
+
+            {/* Offer Taxonomy & Tags */}
+            <FormSection
+              title="Offer Taxonomy & Tags"
+              description="Attach centralized tags (e.g. #deals, #black-friday, #tech) for unified discovery across review articles and store pages."
+            >
+              <TagInput
+                tags={form.tags || []}
+                onChange={(newTags) => setForm({ ...form, tags: newTags })}
+                label="Offer Tags"
+                placeholder="Type tag name and press Enter (e.g., deals, tech, apple, free-shipping...)"
+                helperText="These tags connect this coupon with related articles, stores, and topic archives."
+              />
+            </FormSection>
           </div>
 
           {/* Sidebar Column (Right - 1 Col) */}
@@ -431,21 +577,14 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
                     className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
                   />
                 </label>
-              </div>
-            </FormSection>
 
-            {/* Offer Taxonomy & Tags */}
-            <FormSection
-              title="Offer Taxonomy & Tags"
-              description="Attach centralized tags (e.g. #deals, #black-friday, #tech) for unified discovery across review articles and store pages."
-            >
-              <TagInput
-                tags={form.tags || []}
-                onChange={(newTags) => setForm({ ...form, tags: newTags })}
-                label="Offer Tags"
-                placeholder="Type tag name and press Enter (e.g., deals, tech, apple, free-shipping...)"
-                helperText="These tags connect this coupon with related articles, stores, and topic archives."
-              />
+                <DisplayPositionPicker
+                  label="Store Display Position"
+                  value={form.sortOrder}
+                  onChange={(nextVal) => setForm({ ...form, sortOrder: nextVal })}
+                  hint="Pick a pinned position in Store (#1 = top) or Auto."
+                />
+              </div>
             </FormSection>
 
             {/* Product / Offer Image Section */}
@@ -515,6 +654,18 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
                   )}
                   <span className="text-[11px] font-bold text-[#C62828] bg-rose-50 px-2.5 py-1 rounded-lg">
                     Get Deal →
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-1">
+                  <Calendar size={11} />
+                  <span>
+                    {form.hasExpiration && (form.startDate || form.expireDate)
+                      ? form.startDate && form.expireDate
+                        ? `Valid ${form.startDate} – ${form.expireDate}`
+                        : form.expireDate
+                        ? `Expires ${form.expireDate}`
+                        : `Valid from ${form.startDate}`
+                      : 'No expiration (Ongoing)'}
                   </span>
                 </div>
               </div>

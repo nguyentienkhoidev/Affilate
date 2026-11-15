@@ -19,5 +19,6 @@ public interface OfferService {
     OfferResponse toggleVerify(Long id);
     OfferResponse toggleStatus(Long id);
     OfferResponse cloneOffer(Long id);
+    void reorder(java.util.List<Long> orderedIds);
     void delete(Long id);
 }

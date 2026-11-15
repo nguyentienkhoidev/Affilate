@@ -25,6 +25,7 @@ export interface AdminArticle {
   storeSlug?: string;
   storeName?: string;
   sidebarConfig?: ArticleSidebarConfig;
+  sortOrder?: number;
 }
 
 export interface CategoryOption {

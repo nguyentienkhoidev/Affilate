@@ -16,5 +16,6 @@ public interface CategoryService {
     CategoryResponse getById(Long id);
     CategoryResponse create(CategoryRequest request);
     CategoryResponse update(Long id, CategoryRequest request);
+    void reorder(List<Long> orderedIds);
     void delete(Long id);
 }

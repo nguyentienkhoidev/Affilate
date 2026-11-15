@@ -6,6 +6,7 @@ import com.heygoodly.portal.common.mapper.BaseMapper;
 import com.heygoodly.portal.modules.store.dto.response.StoreDetailResponse;
 import com.heygoodly.portal.modules.store.dto.response.StoreSummaryResponse;
 import com.heygoodly.portal.modules.store.entity.StoreEntity;
+import com.heygoodly.portal.modules.store.entity.StoreReviewEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -29,10 +30,14 @@ public class StoreMapper implements BaseMapper<StoreEntity, StoreDetailResponse,
 
     @Override
     public StoreDetailResponse toDetailResponse(StoreEntity s) {
-        return toDetailResponse(s, null);
+        return toDetailResponse(s, null, Collections.emptyList());
     }
 
     public StoreDetailResponse toDetailResponse(StoreEntity s, String categoryName) {
+        return toDetailResponse(s, categoryName, Collections.emptyList());
+    }
+
+    public StoreDetailResponse toDetailResponse(StoreEntity s, String categoryName, List<StoreReviewEntity> reviews) {
         if (Objects.isNull(s)) {
             return null;
         }
@@ -40,6 +45,26 @@ public class StoreMapper implements BaseMapper<StoreEntity, StoreDetailResponse,
         List<String> popularSearches = deserializeJson(s.getPopularSearches(), new TypeReference<List<String>>() {});
         List<StoreDetailResponse.StoreFaqDto> faqs = deserializeJson(s.getFaqs(), new TypeReference<List<StoreDetailResponse.StoreFaqDto>>() {});
         List<String> tags = deserializeJson(s.getTags(), new TypeReference<List<String>>() {});
+        StoreDetailResponse.RatingBreakdownDto ratingBreakdown = deserializeJson(
+                s.getRatingBreakdown(),
+                new TypeReference<StoreDetailResponse.RatingBreakdownDto>() {}
+        );
+        List<StoreDetailResponse.StoreReviewDto> customerReviews = CollectionUtils.isEmpty(reviews)
+                ? Collections.emptyList()
+                : reviews.stream()
+                        .map(r -> new StoreDetailResponse.StoreReviewDto(
+                                r.getId(),
+                                r.getReviewerProfileId(),
+                                r.getReviewerName(),
+                                r.getReviewerAvatar(),
+                                Boolean.TRUE.equals(r.getIsVerified()),
+                                r.getRating(),
+                                r.getReviewDateLabel(),
+                                r.getComment(),
+                                r.getSortOrder(),
+                                Boolean.TRUE.equals(r.getIsActive())
+                        ))
+                        .toList();
 
         return new StoreDetailResponse(
                 s.getId(),
@@ -72,7 +97,9 @@ public class StoreMapper implements BaseMapper<StoreEntity, StoreDetailResponse,
                 s.getMetaDescription(),
                 CollectionUtils.isEmpty(popularSearches) ? Collections.emptyList() : popularSearches,
                 CollectionUtils.isEmpty(faqs) ? Collections.emptyList() : faqs,
-                CollectionUtils.isEmpty(tags) ? Collections.emptyList() : tags
+                CollectionUtils.isEmpty(tags) ? Collections.emptyList() : tags,
+                ratingBreakdown,
+                customerReviews
         );
     }
 
@@ -106,7 +133,8 @@ public class StoreMapper implements BaseMapper<StoreEntity, StoreDetailResponse,
                 Boolean.TRUE.equals(s.getIsActive()),
                 Boolean.TRUE.equals(s.getIsFeatured()),
                 Objects.nonNull(activeOffers) ? activeOffers : 0L,
-                CollectionUtils.isEmpty(tags) ? Collections.emptyList() : tags
+                CollectionUtils.isEmpty(tags) ? Collections.emptyList() : tags,
+                Objects.nonNull(s.getSortOrder()) ? s.getSortOrder() : com.heygoodly.portal.common.constant.AppConstants.DEFAULT_SORT_ORDER
         );
     }
 

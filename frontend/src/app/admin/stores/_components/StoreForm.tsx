@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/admin/ImageUpload';
 import TagInput from '@/components/admin/TagInput';
+import DisplayPositionPicker from '@/components/admin/DisplayPositionPicker';
 import AdminFormPage, {
   FormLoading,
   FormNotFound,
@@ -16,6 +17,9 @@ import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { apiClient } from '@/lib/api/axios-client';
 import storeService from '@/services/storeService';
 import { type AdminStore } from '../_lib/data';
+import { StoreCustomerReview, StoreRatingBreakdown } from '@/types/deals';
+import StoreCustomerReviewsSection from '@/components/store/StoreCustomerReviewsSection';
+import ReviewerPicker from './ReviewerPicker';
 import { useToast } from '@/context/ToastContext';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { 
@@ -56,9 +60,12 @@ interface StoreFormState {
   description: string;
   popularSearchesText?: string;
   faqs: Array<{ question: string; answer: string }>;
+  ratingBreakdown: StoreRatingBreakdown;
+  customerReviews: StoreCustomerReview[];
   isFeatured: boolean;
   isActive: boolean;
   tags?: string[];
+  sortOrder: number;
 }
 
 const FORM_ID = 'store-form';
@@ -95,10 +102,19 @@ export default function StoreForm({ id }: { id?: string }) {
             shortDescription: data.socialDescription || '',
             popularSearches: data.popularSearches || [],
             faqs: data.faqs || [],
+            ratingBreakdown: data.ratingBreakdown || {
+              fiveStar: 0,
+              fourStar: 0,
+              threeStar: 0,
+              twoStar: 0,
+              oneStar: 0,
+            },
+            customerReviews: Array.isArray(data.customerReviews) ? data.customerReviews : [],
             isFeatured: Boolean(data.isFeatured),
             isActive: data.isActive !== false,
             clicks: Number(data.afVisitCount ?? 0),
             tags: Array.isArray(data.tags) ? data.tags : [],
+            sortOrder: Number(data.sortOrder ?? 9999),
           };
           setStoreData(mapped);
         }
@@ -135,9 +151,18 @@ export default function StoreForm({ id }: { id?: string }) {
       description: storeData.description,
       popularSearchesText: storeData.popularSearches ? storeData.popularSearches.join(', ') : '',
       faqs: storeData.faqs || [],
+      ratingBreakdown: storeData.ratingBreakdown || {
+        fiveStar: 0,
+        fourStar: 0,
+        threeStar: 0,
+        twoStar: 0,
+        oneStar: 0,
+      },
+      customerReviews: storeData.customerReviews || [],
       isFeatured: storeData.isFeatured,
       isActive: storeData.isActive,
       tags: storeData.tags || [],
+      sortOrder: storeData.sortOrder ?? 9999,
     }
     : {
       name: '',
@@ -154,9 +179,18 @@ export default function StoreForm({ id }: { id?: string }) {
       description: '',
       popularSearchesText: '',
       faqs: [],
+      ratingBreakdown: {
+        fiveStar: 0,
+        fourStar: 0,
+        threeStar: 0,
+        twoStar: 0,
+        oneStar: 0,
+      },
+      customerReviews: [],
       isFeatured: false,
       isActive: true,
       tags: [],
+      sortOrder: 9999,
     };
 
   return <StoreFormInner key={storeData?.id ?? 'new'} id={id} existing={storeData ?? undefined} initial={initial} />;
@@ -219,6 +253,55 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
     }));
   };
 
+  const handleAddReview = () => {
+    setForm((prev) => ({
+      ...prev,
+      customerReviews: [
+        ...prev.customerReviews,
+        {
+          reviewerName: '',
+          reviewerAvatar: '',
+          isVerified: true,
+          rating: 5,
+          reviewDateLabel: '2 days ago',
+          comment: '',
+          sortOrder: prev.customerReviews.length,
+          isActive: true,
+        },
+      ],
+    }));
+  };
+
+  const handleUpdateReview = <K extends keyof StoreCustomerReview>(
+    index: number,
+    field: K,
+    value: StoreCustomerReview[K]
+  ) => {
+    setForm((prev) => {
+      const updated = [...prev.customerReviews];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, customerReviews: updated };
+    });
+  };
+
+  const handleRemoveReview = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      customerReviews: prev.customerReviews.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleBreakdownChange = (field: keyof StoreRatingBreakdown, rawValue: string) => {
+    const parsed = Math.min(100, Math.max(0, parseInt(rawValue, 10) || 0));
+    setForm((prev) => ({
+      ...prev,
+      ratingBreakdown: {
+        ...prev.ratingBreakdown,
+        [field]: parsed,
+      },
+    }));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -255,9 +338,25 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
       isActive: form.isActive,
       isSearchable: true,
       isFeatured: form.isFeatured,
+      sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 9999,
       popularSearches: popularSearches || [],
       faqs: form.faqs.filter((f) => f.question.trim() || f.answer.trim()),
       tags: form.tags || [],
+      ratingBreakdown: form.ratingBreakdown,
+      customerReviews: form.customerReviews
+        .filter((r) => r.reviewerName.trim() || r.comment.trim())
+        .map((r, idx) => ({
+          id: r.id,
+          reviewerProfileId: r.reviewerProfileId,
+          reviewerName: r.reviewerName.trim(),
+          reviewerAvatar: r.reviewerAvatar?.trim() || null,
+          isVerified: r.isVerified !== false,
+          rating: Math.min(5, Math.max(1, Number(r.rating || 5))),
+          reviewDateLabel: r.reviewDateLabel?.trim() || '',
+          comment: r.comment.trim(),
+          sortOrder: idx,
+          isActive: r.isActive !== false,
+        })),
     };
 
     const localPayload = {
@@ -536,6 +635,13 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
                     className="w-4 h-4 rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
                   />
                 </label>
+
+                <DisplayPositionPicker
+                  label="Store Display Position"
+                  value={form.sortOrder}
+                  onChange={(nextVal) => setForm({ ...form, sortOrder: nextVal })}
+                  hint="Pick a pinned position in Stores directory (#1 = top) or Auto."
+                />
               </div>
             </FormSection>
 
@@ -562,6 +668,18 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
                     max="5"
                     value={form.rating}
                     onChange={(e) => setForm({ ...form, rating: parseFloat(e.target.value) || 4.8 })}
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelClass}>Total Reviews Count</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.reviewsCount ?? 0}
+                    onChange={(e) => setForm({ ...form, reviewsCount: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    placeholder="e.g. 12540"
                     className={inputClass}
                   />
                 </div>
@@ -766,6 +884,220 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
               )}
             </div>
           </FormSection>
+
+          {/* Customer Reviews & Rating Breakdown Section (100% Full Width, Database-Backed) */}
+          <FormSection
+            title="Customer Reviews & Rating Breakdown"
+            description="Customize shopper rating breakdown percentages and individual customer review cards displayed on the store page."
+            headerRight={
+              <button
+                type="button"
+                onClick={handleAddReview}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 cursor-pointer transition"
+              >
+                <Plus size={13} />
+                <span>Add Review</span>
+              </button>
+            }
+          >
+            <div className="space-y-5">
+              {/* Star Breakdown Percentages (5★ to 1★) */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Star Rating Breakdown (%)</h4>
+                    <p className="text-[11px] text-slate-500">
+                      Leave all at 0% to auto-calculate score, review count, and % from the actual customer reviews below. Enter custom % to override using Rating Score &amp; Total Reviews Count.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {(
+                    [
+                      { key: 'fiveStar', label: '5 ★ (%)' },
+                      { key: 'fourStar', label: '4 ★ (%)' },
+                      { key: 'threeStar', label: '3 ★ (%)' },
+                      { key: 'twoStar', label: '2 ★ (%)' },
+                      { key: 'oneStar', label: '1 ★ (%)' },
+                    ] as const
+                  ).map((item) => (
+                    <div key={item.key} className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">{item.label}</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={form.ratingBreakdown[item.key]}
+                        onChange={(e) => handleBreakdownChange(item.key, e.target.value)}
+                        className={`${inputClass} text-xs`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Customer Review Cards */}
+              {form.customerReviews.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 text-center space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center mx-auto">
+                    <Star size={16} />
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium">
+                    No customer reviews configured for this store yet.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Add custom shopper reviews stored in PostgreSQL to display the &ldquo;What Shoppers Say&rdquo; section on the store page.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddReview}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-100/80 hover:bg-emerald-200/80 transition cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>Add First Review</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {form.customerReviews.map((review, idx) => (
+                    <div
+                      key={review.id ?? idx}
+                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center">
+                            #{idx + 1}
+                          </span>
+                          <span>{review.reviewerName || `Customer Review #${idx + 1}`}</span>
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={review.isVerified !== false}
+                              onChange={(e) => handleUpdateReview(idx, 'isVerified', e.target.checked)}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                            />
+                            <span>Verified Buyer</span>
+                          </label>
+                          <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={review.isActive !== false}
+                              onChange={(e) => handleUpdateReview(idx, 'isActive', e.target.checked)}
+                              className="rounded border-slate-300 text-[#C62828] focus:ring-[#C62828]"
+                            />
+                            <span>Active</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveReview(idx)}
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer"
+                            title="Remove Review"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600">
+                          Select / Search Saved Reviewer
+                        </label>
+                        <ReviewerPicker
+                          selectedName={review.reviewerName}
+                          onSelect={(profile) => {
+                            setForm((prev) => {
+                              const updated = [...prev.customerReviews];
+                              updated[idx] = {
+                                ...updated[idx],
+                                reviewerProfileId: profile.id,
+                                reviewerName: profile.name,
+                                reviewerAvatar: profile.avatarUrl || '',
+                                isVerified: profile.isVerified,
+                              };
+                              return { ...prev, customerReviews: updated };
+                            });
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700">Reviewer Name *</label>
+                          <input
+                            type="text"
+                            value={review.reviewerName}
+                            onChange={(e) => handleUpdateReview(idx, 'reviewerName', e.target.value)}
+                            placeholder="e.g. Jessica L."
+                            className={`${inputClass} text-xs`}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700">Star Rating (1 - 5)</label>
+                          <select
+                            value={review.rating}
+                            onChange={(e) => handleUpdateReview(idx, 'rating', Number(e.target.value))}
+                            className={`${inputClass} text-xs`}
+                          >
+                            <option value={5}>5 Stars (★★★★★)</option>
+                            <option value={4}>4 Stars (★★★★☆)</option>
+                            <option value={3}>3 Stars (★★★☆☆)</option>
+                            <option value={2}>2 Stars (★★☆☆☆)</option>
+                            <option value={1}>1 Star (★☆☆☆☆)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700">Date Label</label>
+                          <input
+                            type="text"
+                            value={review.reviewDateLabel || ''}
+                            onChange={(e) => handleUpdateReview(idx, 'reviewDateLabel', e.target.value)}
+                            placeholder="e.g. 2 days ago, 1 week ago"
+                            className={`${inputClass} text-xs`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                        <div className="space-y-1">
+                          <ImageUpload
+                            label="Reviewer Avatar"
+                            value={review.reviewerAvatar || ''}
+                            onChange={(url) => handleUpdateReview(idx, 'reviewerAvatar', url)}
+                            folder="avatars"
+                            aspectRatio="square"
+                          />
+                        </div>
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700">Review Comment *</label>
+                          <textarea
+                            rows={3}
+                            value={review.comment}
+                            onChange={(e) => handleUpdateReview(idx, 'comment', e.target.value)}
+                            placeholder="Saved big on my skincare routine with coupons. The code worked perfectly!"
+                            className={`${inputClass} text-xs resize-y leading-relaxed`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddReview}
+                    className="w-full py-2 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-600 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/40 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>Add Another Review</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </FormSection>
         </div>
       </form>
       ) : (
@@ -955,6 +1287,15 @@ function StoreFormInner({ id, existing, initial }: { id?: string; existing?: Adm
                     ))}
                   </div>
                 </div>
+
+                {/* 2.5. Customer Reviews Preview */}
+                <StoreCustomerReviewsSection
+                  storeName={form.name || 'Store'}
+                  rating={form.rating}
+                  reviewCount={form.reviewsCount ?? 0}
+                  ratingBreakdown={form.ratingBreakdown}
+                  reviews={form.customerReviews}
+                />
 
                 {/* 3. Editorial Description from Word Studio */}
                 <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs space-y-4">

@@ -23,6 +23,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import Pagination from '@/components/admin/Pagination';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminActionButton from '@/components/admin/AdminActionButton';
+import PositionReorderCell, { reorderListItems } from '@/components/admin/PositionReorderCell';
 import { adminSelectClass } from '@/components/admin/adminStyles';
 import { ROUTES } from '@/constants/routes';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -36,7 +37,7 @@ import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
 
 type TypeFilter = 'ALL' | 'COUPONS' | 'DEALS';
 type StatusFilter = 'ALL' | 'EXCLUSIVE' | 'ACTIVE';
-type SortBy = 'newest' | 'uses-desc' | 'discount-desc' | 'title-asc';
+type SortBy = 'order-asc' | 'newest' | 'uses-desc' | 'discount-desc' | 'title-asc';
 
 // Global memory cache to prevent duplicate store list API calls across tab switches
 let cachedStoreOptions: Array<{ id: number; name: string }> | null = null;
@@ -88,7 +89,8 @@ function AdminOffersPageContent() {
   const [storeFilter, setStoreFilter] = useState(initialStore);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
+  const [sortBy, setSortBy] = useState<SortBy>('order-asc');
+  const [reordering, setReordering] = useState(false);
   const [storeOptions, setStoreOptions] = useState<Array<{ id: number; name: string }>>(() => cachedStoreOptions || []);
 
   const loadStoreOptions = useCallback(async () => {
@@ -109,6 +111,7 @@ function AdminOffersPageContent() {
     setCurrentPage,
     setPageSize,
     setParam,
+    setItems,
     refresh: refreshOffers,
   } = useServerPagination<OfferItem>({
     endpoint: API_ENDPOINTS.ADMIN.OFFERS,
@@ -116,6 +119,8 @@ function AdminOffersPageContent() {
     initialParams: {
       search: '',
       storeId: initialNumericStoreId,
+      sortBy: 'sortOrder',
+      direction: 'asc',
     },
     mapItem: (o: any): OfferItem => {
       const storeLogo = o.storeLogo || '';
@@ -137,6 +142,7 @@ function AdminOffersPageContent() {
         usesCount: Number(o.usesCount || 0),
         destinationUrl: o.urlRef || `/out/${o.id}`,
         terms: o.description || 'Verified offer',
+        sortOrder: Number(o.sortOrder ?? 9999),
       };
     },
     fallbackItems: [],
@@ -187,7 +193,10 @@ function AdminOffersPageContent() {
 
   const handleSortChange = (val: SortBy) => {
     setSortBy(val);
-    if (val === 'title-asc') {
+    if (val === 'order-asc') {
+      setParam('sortBy', 'sortOrder');
+      setParam('direction', 'asc');
+    } else if (val === 'title-asc') {
       setParam('sortBy', 'name');
       setParam('direction', 'asc');
     } else {
@@ -197,20 +206,43 @@ function AdminOffersPageContent() {
     setCurrentPage(1);
   };
 
-  const isFiltered = search !== '' || storeFilter !== 'ALL' || typeFilter !== 'ALL' || statusFilter !== 'ALL' || sortBy !== 'newest';
+  const canReorder = sortBy === 'order-asc' && search === '' && typeFilter === 'ALL' && statusFilter === 'ALL';
+
+  const handleMove = async (index: number, delta: -1 | 1) => {
+    if (reordering) return;
+    setReordering(true);
+    try {
+      const updated = await reorderListItems(
+        paginatedOffers,
+        index,
+        delta,
+        API_ENDPOINTS.ADMIN.OFFERS_REORDER
+      );
+      if (updated) {
+        setItems(updated.map((item, idx) => ({ ...item, sortOrder: idx + 1 })));
+        toast.success('Updated offer display order!');
+      }
+    } catch {
+      toast.error('Failed to update offer order');
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const isFiltered = search !== '' || storeFilter !== 'ALL' || typeFilter !== 'ALL' || statusFilter !== 'ALL' || sortBy !== 'order-asc';
 
   const handleResetFilters = () => {
     setSearch('');
     setStoreFilter('ALL');
     setTypeFilter('ALL');
     setStatusFilter('ALL');
-    setSortBy('newest');
+    setSortBy('order-asc');
     setParam('search', undefined);
     setParam('storeId', undefined);
     setParam('type', undefined);
     setParam('verified', undefined);
-    setParam('sortBy', 'id');
-    setParam('direction', 'desc');
+    setParam('sortBy', 'sortOrder');
+    setParam('direction', 'asc');
     setCurrentPage(1);
   };
 
@@ -326,6 +358,7 @@ function AdminOffersPageContent() {
           </select>
 
           <select value={sortBy} onChange={(e) => handleSortChange(e.target.value as SortBy)} className={adminSelectClass.replace('bg-slate-50 border-slate-200', 'bg-zinc-50 border-zinc-200')}>
+            <option value="order-asc">Sort: Display Position (#1, #2...)</option>
             <option value="newest">Sort: Newly Created</option>
             <option value="uses-desc">Sort: Most Used & Redeemed</option>
             <option value="discount-desc">Sort: Highest Discount</option>
@@ -363,6 +396,7 @@ function AdminOffersPageContent() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-28">Position</TableHead>
               <TableHead className="w-16">Image</TableHead>
               <TableHead>Store &amp; Offer</TableHead>
               <TableHead>Voucher Code</TableHead>
@@ -374,13 +408,23 @@ function AdminOffersPageContent() {
           <TableBody>
             {paginatedOffers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-zinc-400">
+                <TableCell colSpan={7} className="text-center py-12 text-zinc-400">
                   No promotional offers or coupons match your current filters.
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedOffers.map((offer) => (
+              paginatedOffers.map((offer, idx) => (
                 <TableRow key={offer.id}>
+                  <TableCell className="whitespace-nowrap">
+                    <PositionReorderCell
+                      sortOrder={offer.sortOrder}
+                      index={idx}
+                      total={paginatedOffers.length}
+                      canReorder={canReorder}
+                      disabled={reordering}
+                      onMove={(delta) => handleMove(idx, delta)}
+                    />
+                  </TableCell>
                   <TableCell className="w-16">
                     <div className="w-12 h-12 rounded-lg overflow-hidden border border-zinc-200 bg-white shrink-0 relative flex items-center justify-center p-1 shadow-2xs">
                       {offer.imageUrl ? (

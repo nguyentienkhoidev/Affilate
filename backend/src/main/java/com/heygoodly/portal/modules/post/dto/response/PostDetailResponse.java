@@ -34,5 +34,6 @@ public record PostDetailResponse(
         String metaKeywords,
         String metaDescription,
         String canonicalUrl,
-        String status
+        String status,
+        Integer sortOrder
 ) {}

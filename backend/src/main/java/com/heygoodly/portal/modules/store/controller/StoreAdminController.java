@@ -10,6 +10,7 @@ import com.heygoodly.portal.common.util.PaginationUtils;
 import com.heygoodly.portal.modules.role.enums.RoleCode;
 import com.heygoodly.portal.modules.store.dto.request.StoreAdminQueryCriteria;
 import com.heygoodly.portal.modules.store.dto.request.StoreRequest;
+import com.heygoodly.portal.modules.store.dto.response.ReviewerProfileDto;
 import com.heygoodly.portal.modules.store.dto.response.StoreDetailResponse;
 import com.heygoodly.portal.modules.store.dto.response.StoreSummaryResponse;
 import com.heygoodly.portal.modules.store.service.StoreService;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -51,6 +53,14 @@ public class StoreAdminController {
         Pageable pageable = criteria.toPageable();
         PageResponse<StoreSummaryResponse> response = storeService.getAdminStores(pageable, criteria.getSearch(), criteria.getStatus(), targetCatId, criteria.getTag());
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/reviewers")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<ReviewerProfileDto>>> searchReviewers(
+            @RequestParam(name = "search", required = false) String search
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(storeService.searchReviewerProfiles(search)));
     }
 
     @GetMapping("/{id}")
@@ -89,6 +99,13 @@ public class StoreAdminController {
     public ResponseEntity<ApiResponse<StoreDetailResponse>> cloneStore(@PathVariable("id") String id) {
         StoreDetailResponse response = storeService.cloneStoreByIdOrSlug(id);
         return ResponseEntity.ok(ApiResponse.created(MessageConstants.CREATED, response));
+    }
+
+    @PatchMapping("/reorder")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.STORE_UPDATE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
+    public ResponseEntity<ApiResponse<Void>> reorder(@RequestBody com.heygoodly.portal.common.dto.ReorderRequest request) {
+        storeService.reorder(request != null ? request.orderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.ok(MessageConstants.UPDATED, null));
     }
 
     @DeleteMapping("/{id}")

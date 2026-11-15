@@ -13,9 +13,15 @@ import {
   RotateCcw,
   Undo2,
   AlertTriangle,
+  AlertCircle,
+  CheckCircle2,
   Loader2,
   Sparkles,
 } from 'lucide-react';
+import {
+  validateCustomHeadHtml,
+  type CustomHeadValidationResult,
+} from '@/components/seo/parseCustomHeadHtml';
 import { Card, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -104,6 +110,34 @@ export default function AdminSettingsPage() {
   // Dirty check: has the user made modifications compared to saved snapshot?
   const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSnapshot);
 
+  const customHeadValidation = validateCustomHeadHtml(settings.custom_head_code);
+
+  const formatCustomHeadError = (res: CustomHeadValidationResult): string => {
+    const tag = res.tagName ? `<${res.tagName}>` : '';
+    switch (res.errorCode) {
+      case 'UNCLOSED_COMMENT':
+        return t('Unclosed HTML comment (missing "-->").');
+      case 'UNCLOSED_TAG':
+        return `${t('Unclosed tag')}: ${tag}. ${t('Missing closing tag')} </${res.tagName}>.`;
+      case 'UNEXPECTED_CLOSING_TAG':
+        return `${t('Unexpected closing tag')}: </${res.tagName}>.`;
+      case 'UNSUPPORTED_TAG':
+        return `${t('Unsupported tag')}: ${tag}. ${t('Only <meta>, <link>, <script>, and <style> tags are allowed.')}`;
+      case 'MALFORMED_ATTRIBUTES':
+        return `${t('Malformed attributes in tag')} ${tag} (${t('unclosed quote or missing ">"')}).`;
+      case 'META_MISSING_ATTRS':
+        return t('<meta> tag must include attributes (e.g. name and content).');
+      case 'LINK_MISSING_HREF':
+        return t('<link> tag must include an "href" attribute.');
+      case 'SCRIPT_EMPTY':
+        return t('<script> tag must have a "src" attribute or inline JavaScript code.');
+      case 'STYLE_EMPTY':
+        return t('<style> tag must contain CSS rules.');
+      default:
+        return t('Invalid HTML format: only valid <meta>, <link>, <script>, or <style> tags are allowed.');
+    }
+  };
+
   const updateField = (key: string, value: string) => {
     setSettings((prev) => ({
       ...prev,
@@ -119,6 +153,11 @@ export default function AdminSettingsPage() {
   // 2. Persist updated configuration to PostgreSQL
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!customHeadValidation.valid) {
+      setActiveTab('seo');
+      toast.error(formatCustomHeadError(customHeadValidation));
+      return;
+    }
     setSaving(true);
     try {
       const updated = await settingService.updateAdminSettings(settings);
@@ -488,6 +527,51 @@ export default function AdminSettingsPage() {
                     placeholder='<meta name="msvalidate.01" content="bing_auth_token_4412" />'
                     className="font-mono text-xs"
                   />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1.5 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-slate-700">
+                      {t('Custom <head> Code (Verification Meta & Scripts)')}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {!customHeadValidation.valid ? (
+                        <Badge variant="destructive" className="text-[10px]">
+                          {t('Invalid Format')}
+                        </Badge>
+                      ) : customHeadValidation.tagCount > 0 ? (
+                        <Badge variant="success" className="text-[10px]">
+                          {customHeadValidation.tagCount} {t('valid tag(s)')}
+                        </Badge>
+                      ) : null}
+                      <Badge variant="secondary" className="text-[10px] font-mono">&lt;head&gt;</Badge>
+                    </div>
+                  </div>
+                  <textarea
+                    rows={5}
+                    value={settings.custom_head_code ?? ''}
+                    onChange={(e) => updateField('custom_head_code', e.target.value)}
+                    placeholder={'<meta name="impact-site-verification" value="..." />\n<meta name="verify-admitad" content="..." />\n<script async src="https://..."></script>'}
+                    className={`w-full rounded-xl border bg-white p-3 text-xs text-zinc-900 focus:outline-none focus:ring-2 font-mono placeholder:text-zinc-400 ${
+                      !customHeadValidation.valid
+                        ? 'border-rose-500 focus:ring-rose-500/20 focus:border-rose-500'
+                        : 'border-zinc-200 focus:ring-[#C62828]/20 focus:border-[#C62828]'
+                    }`}
+                  />
+                  {!customHeadValidation.valid ? (
+                    <div className="flex items-start gap-1.5 text-[11px] font-medium text-rose-600">
+                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{formatCustomHeadError(customHeadValidation)}</span>
+                    </div>
+                  ) : customHeadValidation.tagCount > 0 ? (
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{t('HTML syntax is valid and ready for <head> injection.')}</span>
+                    </div>
+                  ) : null}
+                  <p className="text-[11px] text-slate-500">
+                    {t('Paste any <meta>, <link>, <script>, or <style> tags required by affiliate networks or tracking providers. Rendered server-side inside <head>.')}
+                  </p>
                 </div>
 
                 <div className="sm:col-span-2 pt-2 border-t border-slate-100">

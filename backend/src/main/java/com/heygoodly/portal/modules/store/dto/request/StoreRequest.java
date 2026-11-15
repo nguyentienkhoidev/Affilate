@@ -77,6 +77,8 @@ public class StoreRequest {
     private List<String> popularSearches;
     private List<StoreFaqDto> faqs;
     private List<String> tags;
+    private RatingBreakdownDto ratingBreakdown;
+    private List<StoreReviewDto> customerReviews;
 
     @Getter
     @Setter
@@ -86,5 +88,45 @@ public class StoreRequest {
     public static class StoreFaqDto {
         private String question;
         private String answer;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RatingBreakdownDto {
+        @Min(0) @Max(100)
+        private Integer fiveStar;
+        @Min(0) @Max(100)
+        private Integer fourStar;
+        @Min(0) @Max(100)
+        private Integer threeStar;
+        @Min(0) @Max(100)
+        private Integer twoStar;
+        @Min(0) @Max(100)
+        private Integer oneStar;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StoreReviewDto {
+        private Long id;
+        private Long reviewerProfileId;
+        private String reviewerName;
+        private String reviewerAvatar;
+        @Builder.Default
+        private Boolean isVerified = true;
+        @Min(1) @Max(5)
+        @Builder.Default
+        private Integer rating = 5;
+        private String reviewDateLabel;
+        private String comment;
+        private Integer sortOrder;
+        @Builder.Default
+        private Boolean isActive = true;
     }
 }

@@ -8,6 +8,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminFilterBar from '@/components/admin/AdminFilterBar';
 import AdminTableShell from '@/components/admin/AdminTableShell';
 import { adminSelectClass, adminSearchInputClass } from '@/components/admin/adminStyles';
+import { reorderListItems } from '@/components/admin/PositionReorderCell';
 import { ROUTES } from '@/constants/routes';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { apiClient } from '@/lib/api/axios-client';
@@ -36,6 +37,7 @@ export default function AdminCategoriesPage() {
   const { toast, confirm: confirmModal } = useToast();
 
   const [selectedCategoryForArticles, setSelectedCategoryForArticles] = useState<CategoryData | null>(null);
+  const [reordering, setReordering] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortBy, setSortBy] = useState<SortBy>('order-asc');
@@ -50,6 +52,7 @@ export default function AdminCategoriesPage() {
     setCurrentPage,
     setPageSize,
     setParam,
+    setItems,
     refresh: refreshCategories,
   } = useServerPagination<CategoryData>({
     endpoint: API_ENDPOINTS.ADMIN.CATEGORIES,
@@ -109,6 +112,29 @@ export default function AdminCategoriesPage() {
     setParam('isActive', undefined);
     setParam('sortBy', 'sortOrder');
     setParam('direction', 'asc');
+  };
+
+  const canReorder = sortBy === 'order-asc' && search === '' && statusFilter === 'ALL';
+
+  const handleMove = async (index: number, delta: -1 | 1) => {
+    if (reordering) return;
+    setReordering(true);
+    try {
+      const updated = await reorderListItems(
+        paginatedCategories,
+        index,
+        delta,
+        API_ENDPOINTS.ADMIN.CATEGORIES_REORDER
+      );
+      if (updated) {
+        setItems(updated.map((item, idx) => ({ ...item, sortOrder: idx + 1 })));
+        toast.success('Updated category display order!');
+      }
+    } catch {
+      toast.error('Failed to update category order');
+    } finally {
+      setReordering(false);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -222,10 +248,15 @@ export default function AdminCategoriesPage() {
           />
         }
       >
-        {paginatedCategories.map((cat) => (
+        {paginatedCategories.map((cat, idx) => (
           <CategoryTableRow
             key={cat.id}
             category={cat}
+            index={idx}
+            total={paginatedCategories.length}
+            canReorder={canReorder}
+            reordering={reordering}
+            onMove={(delta) => handleMove(idx, delta)}
             onOpenArticlesModal={setSelectedCategoryForArticles}
             onDelete={handleDelete}
           />

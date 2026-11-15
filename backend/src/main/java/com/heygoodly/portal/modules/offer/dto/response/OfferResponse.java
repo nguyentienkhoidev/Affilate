@@ -17,6 +17,8 @@ public record OfferResponse(
         boolean isVerified,
         boolean isActive,
         int sortOrder,
+        boolean hasExpiration,
+        Instant startAt,
         Instant expireAt,
         long usesCount,
         java.util.List<String> tags

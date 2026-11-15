@@ -370,6 +370,13 @@ public class CategoryServiceImpl implements CategoryService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        com.heygoodly.portal.common.util.SortOrderUtils.reorderEntities(
+                orderedIds, categoryRepository, CategoryEntity::getId, CategoryEntity::setSortOrder);
+    }
+
     private CategoryResponse mapToResponse(CategoryEntity entity, String parentName, long postCount, long storeCount) {
         return categoryMapper.toResponse(entity, parentName, postCount, storeCount);
     }

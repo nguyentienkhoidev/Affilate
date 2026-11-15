@@ -24,6 +24,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminFilterBar from '@/components/admin/AdminFilterBar';
 import AdminTableShell from '@/components/admin/AdminTableShell';
 import AdminActionButton from '@/components/admin/AdminActionButton';
+import PositionReorderCell, { reorderListItems } from '@/components/admin/PositionReorderCell';
 import { adminSelectClass, adminSearchInputClass } from '@/components/admin/adminStyles';
 import { ROUTES } from '@/constants/routes';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -37,7 +38,7 @@ import { useToast } from '@/context/ToastContext';
 import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'FEATURED';
-type SortBy = 'name-asc' | 'rating-desc' | 'coupons-desc' | 'clicks-desc';
+type SortBy = 'order-asc' | 'name-asc' | 'rating-desc' | 'coupons-desc' | 'clicks-desc';
 
 interface CategoryOption {
   id: number;
@@ -76,6 +77,7 @@ async function fetchCategoriesCached(): Promise<CategoryOption[]> {
 }
 
 const TABLE_COLUMNS = [
+  { label: 'Position' },
   { label: 'Merchant Brand' },
   { label: 'Category' },
   { label: 'Coupons & Deals' },
@@ -92,7 +94,8 @@ export default function AdminStoresPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const [sortBy, setSortBy] = useState<SortBy>('name-asc');
+  const [sortBy, setSortBy] = useState<SortBy>('order-asc');
+  const [reordering, setReordering] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(() => cachedCategories || []);
 
   const loadCategories = useCallback(async () => {
@@ -113,6 +116,7 @@ export default function AdminStoresPage() {
     setCurrentPage,
     setPageSize,
     setParam,
+    setItems,
     refresh: refreshStores,
   } = useServerPagination<AdminStore>({
     endpoint: API_ENDPOINTS.ADMIN.STORES,
@@ -120,7 +124,7 @@ export default function AdminStoresPage() {
     initialParams: {
       search: '',
       status: undefined,
-      sortBy: 'name',
+      sortBy: 'sortOrder',
       direction: 'asc',
     },
     mapItem: (s: any): AdminStore => ({
@@ -142,6 +146,7 @@ export default function AdminStoresPage() {
       isFeatured: Boolean(s.isFeatured || s.featured),
       isActive: s.isActive !== false,
       clicks: Number(s.afVisitCount ?? 0),
+      sortOrder: Number(s.sortOrder ?? 9999),
     }),
     fallbackItems: [],
   });
@@ -168,7 +173,10 @@ export default function AdminStoresPage() {
 
   const handleSortChange = (val: SortBy) => {
     setSortBy(val);
-    if (val === 'rating-desc') {
+    if (val === 'order-asc') {
+      setParam('sortBy', 'sortOrder');
+      setParam('direction', 'asc');
+    } else if (val === 'rating-desc') {
       setParam('sortBy', 'ratingScore');
       setParam('direction', 'desc');
     } else if (val === 'coupons-desc') {
@@ -183,18 +191,41 @@ export default function AdminStoresPage() {
     }
   };
 
-  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || sortBy !== 'name-asc';
+  const canReorder = sortBy === 'order-asc' && search === '' && categoryFilter === 'ALL' && statusFilter === 'ALL';
+
+  const handleMove = async (index: number, delta: -1 | 1) => {
+    if (reordering) return;
+    setReordering(true);
+    try {
+      const updated = await reorderListItems(
+        pagedItems,
+        index,
+        delta,
+        API_ENDPOINTS.ADMIN.STORES_REORDER
+      );
+      if (updated) {
+        setItems(updated.map((item, idx) => ({ ...item, sortOrder: idx + 1 })));
+        toast.success('Updated store display order!');
+      }
+    } catch {
+      toast.error('Failed to update store order');
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || sortBy !== 'order-asc';
 
   const handleResetFilters = () => {
     setSearch('');
     setCategoryFilter('ALL');
     setStatusFilter('ALL');
-    setSortBy('name-asc');
+    setSortBy('order-asc');
     setParam('search', undefined);
     setParam('categoryId', undefined);
     setParam('category', undefined);
     setParam('status', undefined);
-    setParam('sortBy', 'name');
+    setParam('sortBy', 'sortOrder');
     setParam('direction', 'asc');
   };
 
@@ -310,6 +341,7 @@ export default function AdminStoresPage() {
           </select>
 
           <select value={sortBy} onChange={(e) => handleSortChange(e.target.value as SortBy)} className={adminSelectClass}>
+            <option value="order-asc">Sort: Display Position (#1, #2...)</option>
             <option value="name-asc">Sort: Name (A to Z)</option>
             <option value="rating-desc">Sort: Highest Rating</option>
             <option value="coupons-desc">Sort: Most Coupons</option>
@@ -324,10 +356,20 @@ export default function AdminStoresPage() {
         rowCount={pagedItems.length}
         emptyMessage="No merchant stores match your current filters."
       >
-        {pagedItems.map((store) => {
+        {pagedItems.map((store, idx) => {
           const liveOffersCount = store.activeCoupons ?? 0;
           return (
             <tr key={store.id} className="hover:bg-slate-50/60 transition-colors group">
+              <td className="py-3.5 px-4 whitespace-nowrap">
+                <PositionReorderCell
+                  sortOrder={store.sortOrder}
+                  index={idx}
+                  total={pagedItems.length}
+                  canReorder={canReorder}
+                  disabled={reordering}
+                  onMove={(delta) => handleMove(idx, delta)}
+                />
+              </td>
               {/* Brand */}
               <td className="py-3.5 px-4">
                 <div className="flex items-center gap-3">

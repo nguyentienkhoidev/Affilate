@@ -67,6 +67,13 @@ public class CategoryAdminController {
         return ResponseEntity.ok(ApiResponse.ok(MessageConstants.UPDATED, response));
     }
 
+    @org.springframework.web.bind.annotation.PatchMapping("/reorder")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.CATEGORY_UPDATE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
+    public ResponseEntity<ApiResponse<Void>> reorder(@RequestBody com.heygoodly.portal.common.dto.ReorderRequest request) {
+        categoryService.reorder(request != null ? request.orderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.ok(MessageConstants.UPDATED, null));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('" + PermissionConstants.CATEGORY_DELETE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {

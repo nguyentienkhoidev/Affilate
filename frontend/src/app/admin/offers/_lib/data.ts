@@ -16,6 +16,10 @@ export interface OfferItem {
   terms?: string;
   imageUrl?: string;
   tags?: string[];
+  hasExpiration?: boolean;
+  startAt?: string | null;
+  expireAt?: string | null;
+  sortOrder?: number;
 }
 
 export const OFFERS_STORE_KEY = 'offers';

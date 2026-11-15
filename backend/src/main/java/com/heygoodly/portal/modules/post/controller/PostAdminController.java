@@ -82,6 +82,13 @@ public class PostAdminController {
         return ResponseEntity.ok(ApiResponse.created(MessageConstants.CREATED, response));
     }
 
+    @org.springframework.web.bind.annotation.PatchMapping("/reorder")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.POST_UPDATE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
+    public ResponseEntity<ApiResponse<Void>> reorder(@RequestBody com.heygoodly.portal.common.dto.ReorderRequest request) {
+        postService.reorder(request != null ? request.orderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.ok(MessageConstants.UPDATED, null));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('" + PermissionConstants.POST_DELETE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {

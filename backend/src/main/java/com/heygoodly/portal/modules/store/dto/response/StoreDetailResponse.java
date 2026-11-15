@@ -34,7 +34,30 @@ public record StoreDetailResponse(
         String metaDescription,
         List<String> popularSearches,
         List<StoreFaqDto> faqs,
-        List<String> tags
+        List<String> tags,
+        RatingBreakdownDto ratingBreakdown,
+        List<StoreReviewDto> customerReviews
 ) {
     public record StoreFaqDto(String question, String answer) {}
+
+    public record RatingBreakdownDto(
+            Integer fiveStar,
+            Integer fourStar,
+            Integer threeStar,
+            Integer twoStar,
+            Integer oneStar
+    ) {}
+
+    public record StoreReviewDto(
+            Long id,
+            Long reviewerProfileId,
+            String reviewerName,
+            String reviewerAvatar,
+            boolean isVerified,
+            Integer rating,
+            String reviewDateLabel,
+            String comment,
+            Integer sortOrder,
+            boolean isActive
+    ) {}
 }

@@ -52,5 +52,6 @@ public interface PostService {
     PostDetailResponse create(PostRequest request);
     PostDetailResponse update(Long id, PostRequest request);
     PostDetailResponse clonePost(Long id);
+    void reorder(List<Long> orderedIds);
     void delete(Long id);
 }

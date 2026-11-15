@@ -26,5 +26,6 @@ public record PostSummaryResponse(
         boolean isActive,
         Instant publishedAt,
         long viewCount,
-        String status
+        String status,
+        int sortOrder
 ) {}

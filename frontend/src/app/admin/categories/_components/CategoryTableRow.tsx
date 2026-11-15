@@ -9,6 +9,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import AdminActionButton from '@/components/admin/AdminActionButton';
+import PositionReorderCell from '@/components/admin/PositionReorderCell';
 import { ROUTES } from '@/constants/routes';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 import type { CategoryData } from '../_lib/data';
@@ -16,6 +17,11 @@ import type { AdminArticle } from '../../posts/_lib/data';
 
 interface CategoryTableRowProps {
   category: CategoryData;
+  index: number;
+  total: number;
+  canReorder: boolean;
+  reordering: boolean;
+  onMove: (delta: -1 | 1) => void;
   allArticles?: AdminArticle[];
   onOpenArticlesModal: (category: CategoryData) => void;
   onDelete: (id: number) => void;
@@ -26,6 +32,11 @@ interface CategoryTableRowProps {
  */
 export default function CategoryTableRow({
   category: cat,
+  index,
+  total,
+  canReorder,
+  reordering,
+  onMove,
   onOpenArticlesModal,
   onDelete,
 }: CategoryTableRowProps) {
@@ -34,8 +45,15 @@ export default function CategoryTableRow({
 
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-      <td className="py-3 px-4 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
-        {cat.sortOrder}
+      <td className="py-3 px-4 whitespace-nowrap">
+        <PositionReorderCell
+          sortOrder={cat.sortOrder}
+          index={index}
+          total={total}
+          canReorder={canReorder}
+          disabled={reordering}
+          onMove={onMove}
+        />
       </td>
       <td className="py-3 px-4 min-w-[200px]">
         <span className="font-bold text-slate-900 text-sm block group-hover:text-[#C62828] transition-colors">

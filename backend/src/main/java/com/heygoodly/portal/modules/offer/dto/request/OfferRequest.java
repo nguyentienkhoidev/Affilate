@@ -43,6 +43,11 @@ public class OfferRequest {
     @Builder.Default
     private Integer sortOrder = AppConstants.DEFAULT_SORT_ORDER;
 
+    @Builder.Default
+    private Boolean hasExpiration = false;
+
+    private Instant startAt;
+
     private Instant expireAt;
 
     private String image;

@@ -103,6 +103,13 @@ public class OfferAdminController {
         return ResponseEntity.ok(ApiResponse.created("Offer cloned successfully.", response));
     }
 
+    @PatchMapping("/reorder")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.OFFER_UPDATE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
+    public ResponseEntity<ApiResponse<Void>> reorder(@RequestBody com.heygoodly.portal.common.dto.ReorderRequest request) {
+        offerService.reorder(request != null ? request.orderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.ok(MessageConstants.UPDATED, null));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('" + PermissionConstants.OFFER_DELETE + "') or hasAuthority('" + RoleCode.ROLE_SUPER_ADMIN + "')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {

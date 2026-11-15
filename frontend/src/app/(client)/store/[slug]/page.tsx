@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Bell,
   ChevronRight,
-  ChevronLeft,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -24,6 +23,7 @@ import { ROUTES } from '@/constants/routes';
 import { absoluteUrl } from '@/constants/site';
 import GetCodeButton from '@/components/deals/GetCodeButton';
 import CouponModal from '@/components/deals/CouponModal';
+import StoreCustomerReviewsSection from '@/components/store/StoreCustomerReviewsSection';
 import { triggerDualActionCoupon } from '@/lib/deals/affiliateAction';
 import { Store, Coupon } from '@/types/deals';
 import storeService from '@/services/storeService';
@@ -43,8 +43,6 @@ export default function StoreAffiliatePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'codes' | 'deals'>('all');
-  const [couponPage, setCouponPage] = useState(1);
-  const couponPageSize = 5;
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertEmail, setAlertEmail] = useState('');
@@ -154,13 +152,6 @@ export default function StoreAffiliatePage() {
     return true;
   });
 
-  const totalCouponPages = Math.max(1, Math.ceil(filteredCoupons.length / couponPageSize));
-  const safeCouponPage = Math.min(Math.max(1, couponPage), totalCouponPages);
-  const paginatedCoupons = filteredCoupons.slice(
-    (safeCouponPage - 1) * couponPageSize,
-    safeCouponPage * couponPageSize
-  );
-
   const handleOpenCouponModal = (coupon: Coupon) => {
     triggerDualActionCoupon({
       code: coupon.code,
@@ -190,14 +181,14 @@ export default function StoreAffiliatePage() {
       description: cleanDescription,
       ...(storeRating && storeReviews
         ? {
-            aggregateRating: {
-              '@type': 'AggregateRating',
-              ratingValue: storeRating.toString(),
-              reviewCount: storeReviews.toString(),
-              bestRating: '5',
-              worstRating: '1',
-            },
-          }
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: storeRating.toString(),
+            reviewCount: storeReviews.toString(),
+            bestRating: '5',
+            worstRating: '1',
+          },
+        }
         : {}),
     },
   ];
@@ -222,12 +213,12 @@ export default function StoreAffiliatePage() {
   };
 
   return (
-    <div className="bg-[#f4f5f7] min-h-screen py-6 sm:py-8">
+    <div className="bg-[#f4f5f7] min-h-screen py-3 sm:py-6 lg:py-8">
       <JsonLd data={jsonLdData} />
-      <div className="max-w-7xl mx-auto px-4 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 space-y-3 sm:space-y-5 lg:space-y-6">
 
         {/* Breadcrumb */}
-        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
+        <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500">
           <Link href={ROUTES.PUBLIC.HOME} className="hover:text-[#c62828] transition">Home</Link>
           <ChevronRight size={12} className="shrink-0" />
           <Link href={ROUTES.PUBLIC.STORES} className="hover:text-[#c62828] transition">Stores</Link>
@@ -236,15 +227,15 @@ export default function StoreAffiliatePage() {
         </nav>
 
         {/* Main Affiliate Layout: Sidebar (4 cols) + Coupon Stream (8 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
 
           {/* LEFT COLUMN: STORE INFO & STATS WIDGET */}
           <div className="lg:col-span-4 space-y-5">
 
-            {/* Store Brand Card */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs text-center">
+            {/* Store Brand Card (Compact horizontal on mobile so first coupon fits above the fold; centered on desktop) */}
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs text-left lg:text-center">
               {store.bannerUrl && (
-                <div className="w-full h-28 overflow-hidden relative bg-slate-900">
+                <div className="hidden lg:block w-full h-28 overflow-hidden relative bg-slate-900">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={store.bannerUrl}
@@ -255,59 +246,61 @@ export default function StoreAffiliatePage() {
                 </div>
               )}
 
-              <div className={`p-6 ${store.bannerUrl ? '-mt-12 pt-0 relative z-10' : ''} space-y-4`}>
-                <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden flex items-center justify-center shadow-md border-2 border-white bg-slate-900 text-white">
-                  {store.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={store.logoUrl}
-                      alt={storeName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-black text-3xl">{storeName.substring(0, 2).toUpperCase()}</span>
-                  )}
-                </div>
+              <div className={`p-3 sm:p-4 lg:p-6 ${store.bannerUrl ? 'lg:-mt-12 lg:pt-0 relative z-10' : ''} space-y-2.5 lg:space-y-4`}>
+                <div className="flex items-center gap-3 lg:block lg:space-y-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-24 lg:h-24 lg:mx-auto rounded-xl lg:rounded-2xl overflow-hidden flex items-center justify-center shadow-md border-2 border-white bg-slate-900 text-white shrink-0">
+                    {store.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={store.logoUrl}
+                        alt={storeName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-black text-base lg:text-3xl">{storeName.substring(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
 
-                <div className="space-y-1">
-                  <h1 className="font-black text-xl text-slate-950">
-                    {storeName}
-                  </h1>
+                  <div className="min-w-0 flex-1 space-y-0.5 lg:space-y-1">
+                    <h1 className="font-black text-base sm:text-lg lg:text-xl text-slate-950 truncate lg:whitespace-normal">
+                      {storeName}
+                    </h1>
 
-                  {storeRating && (
-                    <div className="flex items-center justify-center gap-1.5 pt-1 text-xs text-slate-500">
-                      <Star size={16} className="fill-amber-400 text-amber-400" />
-                      <span className="font-bold text-slate-800">{storeRating.toFixed(1)}</span>
-                      {storeReviews && <span>/ {storeReviews.toLocaleString()} ratings</span>}
-                    </div>
-                  )}
+                    {storeRating && (
+                      <div className="flex items-center justify-start lg:justify-center gap-1.5 pt-0.5 lg:pt-1 text-[11px] lg:text-xs text-slate-500">
+                        <Star size={14} className="fill-amber-400 text-amber-400 lg:w-4 lg:h-4" />
+                        <span className="font-bold text-slate-800">{storeRating.toFixed(1)}</span>
+                        {storeReviews && <span>/ {storeReviews.toLocaleString()} ratings</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <p
-                  className="text-xs text-slate-500 leading-relaxed line-clamp-3 text-center px-1 pt-2 border-t border-slate-100"
+                  className="hidden lg:block text-xs text-slate-500 leading-relaxed line-clamp-3 text-center px-1 pt-2 border-t border-slate-100"
                   title={cleanDescription}
                 >
                   {cleanDescription}
                 </p>
 
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5">
+                <div className="grid grid-cols-2 lg:flex lg:flex-col gap-2 lg:gap-2.5">
                   <button
                     type="button"
                     onClick={() => setAlertModalOpen(true)}
-                    className="w-full py-2.5 px-4 rounded-lg border border-[#c62828] text-[#c62828] hover:bg-[#fde8e8] font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                    className="w-full py-2 lg:py-2.5 px-2.5 lg:px-4 rounded-lg border border-[#c62828] text-[#c62828] hover:bg-[#fde8e8] font-bold text-[11px] sm:text-xs transition flex items-center justify-center gap-1.5 lg:gap-2 cursor-pointer shadow-2xs truncate"
                   >
-                    <Bell size={14} />
-                    <span>Get Coupon Alert</span>
+                    <Bell size={13} className="shrink-0" />
+                    <span className="truncate">Get Coupon Alert</span>
                   </button>
 
                   <a
                     href={storeAffiliateUrl}
                     target="_blank"
                     rel="nofollow sponsored noopener noreferrer"
-                    className="lg:hidden w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-2 text-center"
+                    className="lg:hidden w-full py-2 px-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] sm:text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 text-center truncate"
                   >
-                    <span>Visit Official {storeName}</span>
-                    <ExternalLink size={13} />
+                    <span className="truncate">Visit {storeName}</span>
+                    <ExternalLink size={12} className="shrink-0" />
                   </a>
                 </div>
               </div>
@@ -372,15 +365,11 @@ export default function StoreAffiliatePage() {
                 <button
                   type="button"
                   key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setCouponPage(1);
-                  }}
-                  className={`px-3.5 sm:px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${
-                    activeTab === tab.id
-                      ? 'bg-[#c62828] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3.5 sm:px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${activeTab === tab.id
+                    ? 'bg-[#c62828] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -388,7 +377,7 @@ export default function StoreAffiliatePage() {
             </div>
 
             {/* Coupon Cards List */}
-            {paginatedCoupons.length === 0 ? (
+            {filteredCoupons.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-xl p-10 text-center space-y-2 shadow-2xs">
                 <Tag size={32} className="mx-auto text-slate-300" />
                 <h3 className="font-bold text-slate-900 text-sm">
@@ -400,69 +389,95 @@ export default function StoreAffiliatePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {paginatedCoupons.map((coupon) => (
+                {filteredCoupons.map((coupon) => (
                   <div
                     key={coupon.id}
-                    className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                    className="relative bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
 
-                      <div className="relative w-full sm:w-28 h-36 sm:h-28 shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                        {coupon.imageUrl ? (
+                    <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
+                      {/* Compact Store Logo Thumbnail (No large offer image) */}
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white p-1.5 flex items-center justify-center">
+                        {store.logoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={coupon.imageUrl}
-                            alt={coupon.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            src={store.logoUrl}
+                            alt={storeName}
+                            className="w-full h-full object-contain"
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-white font-black text-xl">
-                            <span>{storeName.substring(0, 2).toUpperCase()}</span>
-                            <span className="text-[9px] font-medium text-slate-400 mt-1 uppercase tracking-wider">{storeName}</span>
-                          </div>
+                          <span className="text-sm font-black text-slate-800">
+                            {storeName.substring(0, 2).toUpperCase()}
+                          </span>
                         )}
-
-                        <div className="absolute bottom-1.5 left-1.5 bg-[#c62828] text-white text-[11px] font-black px-2 py-0.5 rounded shadow-sm">
-                          {coupon.discount}
-                        </div>
                       </div>
 
                       <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                            <ShieldCheck size={11} className="text-emerald-600" />{' '}
-                            {coupon.isCode ? 'Promo Code' : 'Direct Deal'}
-                          </span>
-                          {coupon.isExclusive && (
-                            <span className="text-[10px] uppercase font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                              ★ Exclusive
-                            </span>
-                          )}
-                        </div>
-
                         <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug line-clamp-2">
                           {!coupon.title.toLowerCase().startsWith(coupon.discount.toLowerCase()) && (
-                            <span className="text-[#c62828] mr-2">{coupon.discount}</span>
+                            <span className="text-[#c62828] mr-1.5">{coupon.discount}</span>
                           )}
                           <span>{coupon.title}</span>
                         </h3>
 
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                            {coupon.isCode ? 'CODE' : 'DEAL'}
+                          </span>
+                          <span className="text-[11px] font-bold text-emerald-700 inline-flex items-center gap-1 px-1.5 py-0.5">
+                            <ShieldCheck size={12} className="text-emerald-600" />
+                            <span>Verified</span>
+                          </span>
+                          {coupon.isExclusive && (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                              ★ Exclusive
+                            </span>
+                          )}
+                          {coupon.discount && (
+                            <span className="text-[10px] font-semibold text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full">
+                              {coupon.discount}
+                            </span>
+                          )}
+                        </div>
+
                         {coupon.description && (
-                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                          <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 pt-0.5">
                             {coupon.description}
                           </p>
                         )}
 
-                        {coupon.terms && coupon.terms !== coupon.description && (
-                          <p className="text-[10px] text-slate-400 italic line-clamp-1">
-                            Terms: {coupon.terms}
-                          </p>
+                        {((coupon.usesCount ?? 0) > 0 || coupon.startDate || coupon.expiryDate || (coupon.terms && coupon.terms !== coupon.description)) && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 pt-0.5">
+                            {(coupon.usesCount ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                <Users size={11} />
+                                <span>{(coupon.usesCount ?? 0).toLocaleString()} uses</span>
+                              </span>
+                            )}
+                            {(coupon.startDate || coupon.expiryDate) && (
+                              <span className="inline-flex items-center gap-1">
+                                <Clock size={11} />
+                                <span>
+                                  {coupon.startDate && coupon.expiryDate
+                                    ? `Valid ${coupon.startDate} – ${coupon.expiryDate}`
+                                    : coupon.expiryDate
+                                    ? `Expires ${coupon.expiryDate}`
+                                    : `Valid from ${coupon.startDate}`}
+                                </span>
+                              </span>
+                            )}
+                            {coupon.terms && coupon.terms !== coupon.description && (
+                              <span className="italic line-clamp-1">
+                                Terms: {coupon.terms}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="shrink-0 w-full md:w-auto flex justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    <div className="shrink-0 w-full sm:w-auto flex justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                       <GetCodeButton
                         code={coupon.code}
                         isCode={coupon.isCode}
@@ -475,60 +490,6 @@ export default function StoreAffiliatePage() {
               </div>
             )}
 
-            {/* Store Coupon Stream Pagination Bar (always rendered consistently when >= 0 offers) */}
-            <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
-              <span>
-                {filteredCoupons.length === 0 ? (
-                  <>Showing <strong className="text-slate-900">0</strong> offers</>
-                ) : (
-                  <>
-                    Showing{' '}
-                    <strong className="text-slate-900">
-                      {(safeCouponPage - 1) * couponPageSize + 1}
-                    </strong>
-                    –
-                    <strong className="text-slate-900">
-                      {Math.min(safeCouponPage * couponPageSize, filteredCoupons.length)}
-                    </strong>{' '}
-                    of <strong className="text-slate-900">{filteredCoupons.length}</strong> offers
-                  </>
-                )}
-              </span>
-
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCouponPage((p) => Math.max(1, p - 1))}
-                  disabled={safeCouponPage <= 1}
-                  className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                {Array.from({ length: totalCouponPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setCouponPage(p)}
-                    className={`w-8 h-8 rounded-lg font-bold transition cursor-pointer ${
-                      safeCouponPage === p
-                        ? 'bg-[#c62828] text-white shadow-2xs'
-                        : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCouponPage((p) => Math.min(totalCouponPages, p + 1))}
-                  disabled={safeCouponPage >= totalCouponPages}
-                  className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-
           </div>
 
         </div>
@@ -536,45 +497,45 @@ export default function StoreAffiliatePage() {
         {/* Full-Width Sections */}
         <div className="w-full space-y-6 pt-2">
           {/* 1. Trust Value Props Bar */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-slate-100">
-              <div className="flex items-center gap-3 lg:pr-4">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                  <ShieldCheck size={18} />
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 sm:p-5 shadow-2xs">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-0 lg:divide-x divide-slate-100">
+              <div className="flex items-center gap-2.5 sm:gap-3 lg:pr-4">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <h5 className="text-xs font-bold text-slate-900 leading-tight">Hand-Tested Coupons</h5>
-                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Verified checkout carts</p>
+                  <h5 className="text-[11px] sm:text-xs font-bold text-slate-900 leading-tight">Hand-Tested Coupons</h5>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 leading-tight mt-0.5">Verified checkout carts</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 lg:px-4">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                  <Clock size={18} />
+              <div className="flex items-center gap-2.5 sm:gap-3 lg:px-4">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <Clock size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <h5 className="text-xs font-bold text-slate-900 leading-tight">Regularly Audited</h5>
-                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Live database sync</p>
+                  <h5 className="text-[11px] sm:text-xs font-bold text-slate-900 leading-tight">Regularly Audited</h5>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 leading-tight mt-0.5">Live database sync</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:px-4">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                  <Tag size={18} />
+              <div className="flex items-center gap-2.5 sm:gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:px-4">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <Tag size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <h5 className="text-xs font-bold text-slate-900 leading-tight">Direct Partner Links</h5>
-                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Official merchant offers</p>
+                  <h5 className="text-[11px] sm:text-xs font-bold text-slate-900 leading-tight">Direct Partner Links</h5>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 leading-tight mt-0.5">Official merchant offers</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:pl-4">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                  <Users size={18} />
+              <div className="flex items-center gap-2.5 sm:gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 lg:pl-4">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <Users size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <h5 className="text-xs font-bold text-slate-900 leading-tight">Editorial Standards</h5>
-                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Zero fabricated codes</p>
+                  <h5 className="text-[11px] sm:text-xs font-bold text-slate-900 leading-tight">Editorial Standards</h5>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 leading-tight mt-0.5">Zero fabricated codes</p>
                 </div>
               </div>
             </div>
@@ -599,6 +560,15 @@ export default function StoreAffiliatePage() {
               </div>
             </div>
           )}
+
+          {/* 2.5. Customer Reviews & Rating Breakdown (Database-backed) */}
+          <StoreCustomerReviewsSection
+            storeName={storeName}
+            rating={storeRating ?? 0}
+            reviewCount={storeReviews ?? 0}
+            ratingBreakdown={store.ratingBreakdown}
+            reviews={store.customerReviews || []}
+          />
 
           {/* 3. About Store Section */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-2xs space-y-6">
@@ -671,16 +641,16 @@ export default function StoreAffiliatePage() {
         offer={
           selectedCoupon
             ? {
-                id: String(selectedCoupon.id),
-                title: selectedCoupon.title,
-                code: selectedCoupon.code,
-                discount: selectedCoupon.discount,
-                storeName: storeName,
-                storeSlug: store.slug,
-                affiliateUrl: selectedCoupon.affiliateUrl || storeAffiliateUrl,
-                terms: selectedCoupon.terms,
-                imageUrl: selectedCoupon.imageUrl,
-              }
+              id: String(selectedCoupon.id),
+              title: selectedCoupon.title,
+              code: selectedCoupon.code,
+              discount: selectedCoupon.discount,
+              storeName: storeName,
+              storeSlug: store.slug,
+              affiliateUrl: selectedCoupon.affiliateUrl || storeAffiliateUrl,
+              terms: selectedCoupon.terms,
+              imageUrl: selectedCoupon.imageUrl,
+            }
             : null
         }
       />

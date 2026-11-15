@@ -11,18 +11,22 @@ export function mapBackendOfferToCoupon(o: any): Coupon {
     ? String(o.image || o.imageUrl || o.storeLogo).trim()
     : undefined;
 
-  let formattedExpiry: string | undefined;
-  if (o.expireAt) {
+  const formatOfferDate = (raw: unknown): string | undefined => {
+    if (!raw) return undefined;
     try {
-      formattedExpiry = new Date(o.expireAt).toLocaleDateString('en-US', {
+      return new Date(String(raw)).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       });
     } catch {
-      formattedExpiry = String(o.expireAt);
+      return String(raw);
     }
-  }
+  };
+
+  const hasExpiration = Boolean(o.hasExpiration) || Boolean(o.startAt) || Boolean(o.expireAt);
+  const formattedStart = hasExpiration ? formatOfferDate(o.startAt) : undefined;
+  const formattedExpiry = hasExpiration ? formatOfferDate(o.expireAt) : undefined;
 
   return {
     id: String(o.id),
@@ -38,6 +42,8 @@ export function mapBackendOfferToCoupon(o: any): Coupon {
     isExclusive: Boolean(o.isExclusive),
     isCode,
     terms: o.description ? String(o.description) : undefined,
+    hasExpiration,
+    startDate: formattedStart,
     expiryDate: formattedExpiry,
     imageUrl: resolvedImage,
     affiliateUrl: `/out/${o.id}`,

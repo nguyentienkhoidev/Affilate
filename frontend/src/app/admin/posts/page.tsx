@@ -24,6 +24,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminFilterBar from '@/components/admin/AdminFilterBar';
 import AdminTableShell from '@/components/admin/AdminTableShell';
 import AdminActionButton from '@/components/admin/AdminActionButton';
+import PositionReorderCell, { reorderListItems } from '@/components/admin/PositionReorderCell';
 import { adminSelectClass, adminSearchInputClass } from '@/components/admin/adminStyles';
 import { ROUTES } from '@/constants/routes';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -36,7 +37,7 @@ import UnauthorizedAccess from '@/components/admin/UnauthorizedAccess';
 
 type StatusFilter = 'ALL' | 'PUBLISHED' | 'SCHEDULED' | 'DRAFT';
 type FeaturedFilter = 'ALL' | 'FEATURED';
-type SortBy = 'newest' | 'views-desc' | 'title-asc';
+type SortBy = 'order-asc' | 'newest' | 'views-desc' | 'title-asc';
 
 interface PostStats {
   total: number;
@@ -47,6 +48,7 @@ interface PostStats {
 }
 
 const TABLE_COLUMNS = [
+  { label: 'Position' },
   { label: 'Article Headline' },
   { label: 'Category' },
   { label: 'Author' },
@@ -83,7 +85,8 @@ function AdminPostsContent() {
   const [categoryFilter, setCategoryFilter] = useState(catParam || 'ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [featuredFilter, setFeaturedFilter] = useState<FeaturedFilter>('ALL');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
+  const [sortBy, setSortBy] = useState<SortBy>('order-asc');
+  const [reordering, setReordering] = useState(false);
 
   // Categories list loaded on-demand per Rule 2
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -143,6 +146,7 @@ function AdminPostsContent() {
     setCurrentPage,
     setPageSize,
     setParam,
+    setItems,
     refresh: refreshPosts,
   } = useServerPagination<AdminArticle>({
     endpoint: API_ENDPOINTS.ADMIN.POSTS,
@@ -153,8 +157,8 @@ function AdminPostsContent() {
       status: undefined,
       active: undefined,
       featured: undefined,
-      sortBy: 'id',
-      direction: 'desc',
+      sortBy: 'sortOrder',
+      direction: 'asc',
     },
     mapItem: (p: any): AdminArticle => {
       const now = Date.now();
@@ -208,6 +212,7 @@ function AdminPostsContent() {
           : 'Today',
         scheduledAt: isFuture ? p.publishedAt : undefined,
         readTime: p.readTime || '',
+        sortOrder: Number(p.sortOrder ?? 9999),
       };
     },
     fallbackItems: [],
@@ -241,7 +246,10 @@ function AdminPostsContent() {
 
   const handleSortChange = (val: SortBy) => {
     setSortBy(val);
-    if (val === 'views-desc') {
+    if (val === 'order-asc') {
+      setParam('sortBy', 'sortOrder');
+      setParam('direction', 'asc');
+    } else if (val === 'views-desc') {
       setParam('sortBy', 'viewCount');
       setParam('direction', 'desc');
     } else if (val === 'title-asc') {
@@ -253,21 +261,49 @@ function AdminPostsContent() {
     }
   };
 
-  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || featuredFilter !== 'ALL' || sortBy !== 'newest';
+  const canReorder =
+    sortBy === 'order-asc' &&
+    search === '' &&
+    categoryFilter === 'ALL' &&
+    statusFilter === 'ALL' &&
+    featuredFilter === 'ALL';
+
+  const handleMove = async (index: number, delta: -1 | 1) => {
+    if (reordering) return;
+    setReordering(true);
+    try {
+      const updated = await reorderListItems(
+        pagedItems,
+        index,
+        delta,
+        API_ENDPOINTS.ADMIN.POSTS_REORDER
+      );
+      if (updated) {
+        setItems(updated.map((item, idx) => ({ ...item, sortOrder: idx + 1 })));
+        toast.success('Updated article display order!');
+      }
+    } catch {
+      toast.error('Failed to update article order');
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const isFiltered = search !== '' || categoryFilter !== 'ALL' || statusFilter !== 'ALL' || featuredFilter !== 'ALL' || sortBy !== 'order-asc';
 
   const handleResetFilters = () => {
     setSearch('');
     setCategoryFilter('ALL');
     setStatusFilter('ALL');
     setFeaturedFilter('ALL');
-    setSortBy('newest');
+    setSortBy('order-asc');
     setParam('search', undefined);
     setParam('categoryId', undefined);
     setParam('status', undefined);
     setParam('active', undefined);
     setParam('featured', undefined);
-    setParam('sortBy', 'id');
-    setParam('direction', 'desc');
+    setParam('sortBy', 'sortOrder');
+    setParam('direction', 'asc');
   };
 
   const handleClone = async (art: AdminArticle) => {
@@ -405,6 +441,7 @@ function AdminPostsContent() {
           </select>
 
           <select value={sortBy} onChange={(e) => handleSortChange(e.target.value as SortBy)} className={adminSelectClass}>
+            <option value="order-asc">Sort: Display Position (#1, #2...)</option>
             <option value="newest">Sort: Newly Created</option>
             <option value="views-desc">Sort: Highest Reader Views</option>
             <option value="title-asc">Sort: Title (A to Z)</option>
@@ -436,8 +473,18 @@ function AdminPostsContent() {
         rowCount={pagedItems.length}
         emptyMessage="No articles match your current search and filter criteria."
       >
-        {pagedItems.map((art) => (
+        {pagedItems.map((art, idx) => (
           <tr key={art.id} className="hover:bg-slate-50/60 transition-colors group">
+            <td className="py-3.5 px-4 whitespace-nowrap">
+              <PositionReorderCell
+                sortOrder={art.sortOrder}
+                index={idx}
+                total={pagedItems.length}
+                canReorder={canReorder}
+                disabled={reordering}
+                onMove={(delta) => handleMove(idx, delta)}
+              />
+            </td>
             {/* Headline + thumbnail */}
             <td className="py-3.5 px-4 max-w-md">
               <div className="flex items-center gap-3">

@@ -21,5 +21,6 @@ public record StoreSummaryResponse(
         boolean isActive,
         boolean isFeatured,
         long activeOffersCount,
-        List<String> tags
+        List<String> tags,
+        int sortOrder
 ) {}

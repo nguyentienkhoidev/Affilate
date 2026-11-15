@@ -1,3 +1,5 @@
+import { StoreCustomerReview, StoreRatingBreakdown } from '@/types/deals';
+
 export interface AdminStore {
   id: string;
   name: string;
@@ -16,10 +18,13 @@ export interface AdminStore {
   shortDescription?: string;
   popularSearches?: string[];
   faqs?: Array<{ question: string; answer: string }>;
+  ratingBreakdown?: StoreRatingBreakdown;
+  customerReviews?: StoreCustomerReview[];
   isFeatured: boolean;
   isActive: boolean;
   clicks: number;
   tags?: string[];
+  sortOrder?: number;
 }
 
 export const STORES_STORE_KEY = 'stores';

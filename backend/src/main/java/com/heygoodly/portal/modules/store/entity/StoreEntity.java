@@ -135,4 +135,8 @@ public class StoreEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tags", columnDefinition = "jsonb")
     private String tags;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "rating_breakdown", columnDefinition = "jsonb")
+    private String ratingBreakdown;
 }

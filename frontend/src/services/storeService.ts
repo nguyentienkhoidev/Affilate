@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api/axios-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import { Store } from '@/types/deals';
+import { Store, ReviewerProfile } from '@/types/deals';
 
 export function mapBackendStoreToStore(s: any): Store {
   const maxOfferNum = Number(s.maxOffer ?? 0);
@@ -28,6 +28,29 @@ export function mapBackendStoreToStore(s: any): Store {
     shortDescription: s.socialDescription || s.metaDescription || s.shortDescription || undefined,
     popularSearches: Array.isArray(s.popularSearches) ? s.popularSearches : [],
     faqs: Array.isArray(s.faqs) ? s.faqs : [],
+    ratingBreakdown: s.ratingBreakdown && typeof s.ratingBreakdown === 'object'
+      ? {
+          fiveStar: Number(s.ratingBreakdown.fiveStar ?? 0),
+          fourStar: Number(s.ratingBreakdown.fourStar ?? 0),
+          threeStar: Number(s.ratingBreakdown.threeStar ?? 0),
+          twoStar: Number(s.ratingBreakdown.twoStar ?? 0),
+          oneStar: Number(s.ratingBreakdown.oneStar ?? 0),
+        }
+      : undefined,
+    customerReviews: Array.isArray(s.customerReviews)
+      ? s.customerReviews.map((r: any) => ({
+          id: r.id ? Number(r.id) : undefined,
+          reviewerProfileId: r.reviewerProfileId ? Number(r.reviewerProfileId) : undefined,
+          reviewerName: String(r.reviewerName || ''),
+          reviewerAvatar: r.reviewerAvatar ? String(r.reviewerAvatar) : undefined,
+          isVerified: r.isVerified !== false,
+          rating: Number(r.rating ?? 5),
+          reviewDateLabel: r.reviewDateLabel ? String(r.reviewDateLabel) : '',
+          comment: String(r.comment || ''),
+          sortOrder: r.sortOrder !== undefined ? Number(r.sortOrder) : 0,
+          isActive: r.isActive !== false,
+        }))
+      : [],
     affiliateUrl: `/go/${s.slug}`,
     featured: Boolean(s.isFeatured || s.featured),
     isFeatured: Boolean(s.isFeatured || s.featured),
@@ -212,6 +235,29 @@ class StoreService {
 
   async deleteStore(id: string | number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.ADMIN.STORE_DETAIL(id));
+  }
+
+  async searchReviewerProfiles(search = '', signal?: AbortSignal): Promise<ReviewerProfile[]> {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.ADMIN.STORE_REVIEWERS, {
+        params: search.trim() ? { search: search.trim() } : undefined,
+        signal,
+      });
+      const list = res.data?.data ?? res.data;
+      if (Array.isArray(list)) {
+        return list.map((p: any) => ({
+          id: Number(p.id),
+          name: String(p.name || ''),
+          avatarUrl: p.avatarUrl ? String(p.avatarUrl) : undefined,
+          isVerified: p.isVerified !== false,
+        }));
+      }
+    } catch (err: any) {
+      if (err?.name !== 'CanceledError' && err?.code !== 'ERR_CANCELED') {
+        console.warn('Failed to search reviewer profiles:', err);
+      }
+    }
+    return [];
   }
 }
 

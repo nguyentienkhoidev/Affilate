@@ -43,7 +43,7 @@ public class PostPublicController {
     public ResponseEntity<ApiResponse<PageResponse<PostSummaryResponse>>> list(
             @RequestParam(value = "page", required = false, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER_STR) Integer page,
             @RequestParam(value = "size", required = false, defaultValue = "12") Integer size,
-            @RequestParam(value = "sortBy", required = false, defaultValue = EntityFieldConstants.PUBLISHED_AT) String sortBy,
+            @RequestParam(value = "sortBy", required = false) String sortBy,
             @RequestParam(value = "direction", required = false, defaultValue = AppConstants.DEFAULT_SORT_DIRECTION_DESC) String direction,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
             @RequestParam(value = "categoryIds", required = false) List<Long> categoryIds,
@@ -57,7 +57,16 @@ public class PostPublicController {
             @RequestParam(value = "tags", required = false) List<String> tags,
             @RequestParam(value = "featured", required = false) Boolean featured
     ) {
-        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, direction);
+        Pageable pageable = (sortBy == null || sortBy.isBlank())
+                ? org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, page),
+                        Math.max(1, size),
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Order.asc(EntityFieldConstants.SORT_ORDER),
+                                org.springframework.data.domain.Sort.Order.desc(EntityFieldConstants.PUBLISHED_AT)
+                        )
+                )
+                : PaginationUtils.createPageable(page, size, sortBy, direction);
         PostPublicQueryCriteria criteria = PostPublicQueryCriteria.builder()
                 .pageable(pageable)
                 .categoryId(categoryId)

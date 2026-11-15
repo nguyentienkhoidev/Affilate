@@ -30,6 +30,7 @@ import {
 import { tagService, type TagItem } from '@/services/tagService';
 import ImageUpload from '@/components/admin/ImageUpload';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import DisplayPositionPicker from '@/components/admin/DisplayPositionPicker';
 import AdminFormPage, {
   FormLoading,
   FormNotFound,
@@ -63,6 +64,7 @@ interface PostFormState {
   scheduledAt: string;
   imageUrl: string;
   featured: boolean;
+  sortOrder: number;
   tags: string;
   storeSlug: string;
   storeName: string;
@@ -186,6 +188,7 @@ function PostFormContent({ id }: { id?: string }) {
             scheduledAt,
             imageUrl: data.image || '',
             featured: Boolean(data.isFeatured),
+            sortOrder: Number(data.sortOrder ?? 9999),
             tags: parsedTags,
             storeSlug: data.storeSlug || '',
             storeName: data.storeName || '',
@@ -237,6 +240,7 @@ function PostFormContent({ id }: { id?: string }) {
         scheduledAt: existing.scheduledAt || getDefaultScheduledTime(),
         imageUrl: existing.imageUrl,
         featured: existing.featured,
+        sortOrder: existing.sortOrder ?? 9999,
         tags: existing.tags.join(', '),
         storeSlug: existing.storeSlug || '',
         storeName: existing.storeName || '',
@@ -290,6 +294,7 @@ function PostFormContent({ id }: { id?: string }) {
         scheduledAt: getDefaultScheduledTime(),
         imageUrl: '',
         featured: false,
+        sortOrder: 9999,
         tags: categoryParam ? `${categoryParam}, Reviews` : 'Tech, Hardware, Lab Test',
         storeSlug: '',
         storeName: '',
@@ -535,6 +540,7 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
       rating: numericRating,
       isFeatured: form.featured,
       isActive: isActive,
+      sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 9999,
       publishedAt: finalPublishedAt,
       status: form.status,
       tags: parsedTags,
@@ -822,6 +828,13 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
                     />
                   </div>
                 )}
+
+                <DisplayPositionPicker
+                  label="Article Display Position"
+                  value={form.sortOrder}
+                  onChange={(nextVal) => setForm({ ...form, sortOrder: nextVal })}
+                  hint="Pick a pinned position in article listings (#1 = top) or Auto."
+                />
 
                 {/* Hero / Spotlight Toggle */}
                 <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-slate-100">

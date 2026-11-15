@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Plus, ExternalLink, Edit2, Eye, Monitor, Tablet, Smartphone, FolderTree, RefreshCw, AlertCircle } from 'lucide-react';
 import ImageUpload from '@/components/admin/ImageUpload';
+import DisplayPositionPicker from '@/components/admin/DisplayPositionPicker';
 import AdminFormPage, {
   FormLoading,
   FormNotFound,
@@ -298,16 +299,12 @@ function CategoryFormInner({ existing, initial }: { existing?: CategoryData; ini
             <div className="lg:col-span-1 space-y-6">
               <FormSection title="Display & Taxonomy">
                 <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className={labelClass}>Navigation Sort Order</label>
-                    <input
-                      type="number"
-                      value={form.sortOrder}
-                      onChange={(e) => setForm({ ...form, sortOrder: parseInt(e.target.value) || 1 })}
-                      className={inputClass}
-                    />
-                    <span className="text-[11px] text-slate-400">Order shown in header nav</span>
-                  </div>
+                  <DisplayPositionPicker
+                    label="Navigation Display Position"
+                    value={form.sortOrder}
+                    onChange={(nextVal) => setForm({ ...form, sortOrder: nextVal })}
+                    hint="Pick a slot in header navigation (#1 = first) or Auto."
+                  />
 
                   <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer transition">
                     <div>

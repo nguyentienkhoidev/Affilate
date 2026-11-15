@@ -15,12 +15,18 @@ export const BASELINE_FACTORY_SETTINGS: SystemSettingsMap = {
   site_logo: '',
   site_favicon: '',
   footer_copyright: '© 2026 HeyGoodly. All rights reserved.',
+  holiday_theme_mode: 'off',
+  holiday_theme_manual: 'none',
+  holiday_effects_enabled: 'true',
+  holiday_country_overrides: '{}',
+  holiday_custom_rules: '[]',
 
   // SEO & Verification
   meta_title: 'HeyGoodly - Latest Deals, Verified Coupons & Shopping Reviews',
   meta_description: 'Discover verified promo codes, discounts, exclusive deals, and honest shopping reviews to save more every day.',
   google_meta: '',
   bing_meta: '',
+  custom_head_code: '',
   canonical_url: 'https://heygoodly.com',
   og_image: '',
   no_index: 'false',

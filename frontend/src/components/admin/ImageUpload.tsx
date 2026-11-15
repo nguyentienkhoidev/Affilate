@@ -48,11 +48,24 @@ export default function ImageUpload({
   const [copied, setCopied] = useState(false);
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [imgLoadError, setImgLoadError] = useState(false);
-  const [imgLoading, setImgLoading] = useState(true);
+  const [imgLoading, setImgLoading] = useState(false);
+  const previewImgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setImgLoadError(false);
-    setImgLoading(true);
+    if (!value) {
+      setImgLoading(false);
+      return;
+    }
+    const img = previewImgRef.current;
+    if (img && img.complete) {
+      setImgLoading(false);
+      if (img.naturalWidth === 0) {
+        setImgLoadError(true);
+      }
+    } else {
+      setImgLoading(true);
+    }
   }, [value]);
 
   // Staged Upload with Mandatory Tags
@@ -267,6 +280,7 @@ export default function ImageUpload({
               </div>
             ) : (
               <img
+                ref={previewImgRef}
                 src={value}
                 alt={label || 'Uploaded Preview'}
                 className={`w-full h-full object-contain transition duration-300 group-hover:scale-102 ${

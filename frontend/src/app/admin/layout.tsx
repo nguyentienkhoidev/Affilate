@@ -18,6 +18,7 @@ import {
   Settings,
   History,
   Mail,
+  Sparkles,
 } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/ui-constants';
@@ -139,6 +140,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         { label: t('Staff Accounts'), icon: Users, href: ROUTES.ADMIN.USERS, count: String(counts.usersCount), permission: 'user.view' },
         { label: t('Roles & RBAC Matrix'), icon: ShieldCheck, href: ROUTES.ADMIN.ROLES, count: String(counts.rolesCount), permission: 'role.view' },
         { label: t('Action Tracing & Audit'), icon: History, href: ROUTES.ADMIN.TRACING, count: String(counts.tracingCount), permission: 'audit.view' },
+        { label: t('Holiday & Geo Themes'), icon: Sparkles, href: ROUTES.ADMIN.HOLIDAYS, permission: 'setting.general' },
         { label: t('System Settings'), icon: Settings, href: ROUTES.ADMIN.SETTINGS, permission: 'setting.general' },
       ],
     },

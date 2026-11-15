@@ -197,6 +197,15 @@ public class OfferServiceImpl implements OfferService {
                 .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException(EntityFieldConstants.ENTITY_STORE, EntityFieldConstants.ID, request.getStoreId()));
 
+        boolean hasExpiration = Boolean.TRUE.equals(request.getHasExpiration())
+                || request.getStartAt() != null
+                || request.getExpireAt() != null;
+        java.time.Instant startAt = hasExpiration ? request.getStartAt() : null;
+        java.time.Instant expireAt = hasExpiration ? request.getExpireAt() : null;
+        if (startAt != null && expireAt != null && expireAt.isBefore(startAt)) {
+            throw new IllegalArgumentException("Offer expiration date must be on or after the start date.");
+        }
+
         OfferEntity entity = OfferEntity.builder()
                 .storeId(store.getId())
                 .name(request.getName().trim())
@@ -208,7 +217,9 @@ public class OfferServiceImpl implements OfferService {
                 .isVerified(request.getIsVerified() != null ? request.getIsVerified() : false)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : com.heygoodly.portal.common.constant.AppConstants.DEFAULT_SORT_ORDER)
-                .expireAt(request.getExpireAt())
+                .hasExpiration(hasExpiration)
+                .startAt(startAt)
+                .expireAt(expireAt)
                 .build();
 
         entity.setCreatedBy(SecurityUtils.getCurrentUserEmail().orElse(AppConstants.SYSTEM_USER));
@@ -244,7 +255,16 @@ public class OfferServiceImpl implements OfferService {
         if (request.getIsVerified() != null) entity.setIsVerified(request.getIsVerified());
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
         if (request.getSortOrder() != null) entity.setSortOrder(request.getSortOrder());
-        entity.setExpireAt(request.getExpireAt());
+        boolean hasExpiration = Boolean.TRUE.equals(request.getHasExpiration())
+                || (request.getHasExpiration() == null && (request.getStartAt() != null || request.getExpireAt() != null));
+        java.time.Instant startAt = hasExpiration ? request.getStartAt() : null;
+        java.time.Instant expireAt = hasExpiration ? request.getExpireAt() : null;
+        if (startAt != null && expireAt != null && expireAt.isBefore(startAt)) {
+            throw new IllegalArgumentException("Offer expiration date must be on or after the start date.");
+        }
+        entity.setHasExpiration(hasExpiration);
+        entity.setStartAt(startAt);
+        entity.setExpireAt(expireAt);
 
         if (request.getTags() != null) {
             List<String> syncedTags = tagService.syncEntityTags(EntityFieldConstants.TYPE_OFFER, entity.getId(), request.getTags());
@@ -307,6 +327,8 @@ public class OfferServiceImpl implements OfferService {
                 .isVerified(source.getIsVerified())
                 .isActive(false) // Cloned copy starts inactive
                 .sortOrder(source.getSortOrder())
+                .hasExpiration(Boolean.TRUE.equals(source.getHasExpiration()))
+                .startAt(source.getStartAt())
                 .expireAt(source.getExpireAt())
                 .build();
 
@@ -398,6 +420,13 @@ public class OfferServiceImpl implements OfferService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @Override
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        com.heygoodly.portal.common.util.SortOrderUtils.reorderEntities(
+                orderedIds, offerRepository, OfferEntity::getId, OfferEntity::setSortOrder);
     }
 
     private List<String> deserializeJson(String json) {

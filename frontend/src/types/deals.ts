@@ -47,10 +47,40 @@ export interface Coupon {
   isExclusive?: boolean;
   isCode: boolean;
   terms?: string;
+  hasExpiration?: boolean;
+  startDate?: string;
   expiryDate?: string;
   imageUrl?: string;
   affiliateUrl?: string;
   tags?: string[];
+}
+
+export interface StoreRatingBreakdown {
+  fiveStar: number;
+  fourStar: number;
+  threeStar: number;
+  twoStar: number;
+  oneStar: number;
+}
+
+export interface ReviewerProfile {
+  id: number;
+  name: string;
+  avatarUrl?: string;
+  isVerified: boolean;
+}
+
+export interface StoreCustomerReview {
+  id?: number;
+  reviewerProfileId?: number;
+  reviewerName: string;
+  reviewerAvatar?: string;
+  isVerified: boolean;
+  rating: number;
+  reviewDateLabel?: string;
+  comment: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 export interface Store {
@@ -73,6 +103,8 @@ export interface Store {
   shortDescription?: string;
   popularSearches?: string[];
   faqs?: Array<{ question: string; answer: string }>;
+  ratingBreakdown?: StoreRatingBreakdown;
+  customerReviews?: StoreCustomerReview[];
   affiliateUrl: string;
   featured?: boolean;
   isFeatured?: boolean;

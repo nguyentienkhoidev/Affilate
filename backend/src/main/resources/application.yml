@@ -93,6 +93,8 @@ app:
     issuer: ${TWO_FACTOR_ISSUER:HeyGoodlyProCMS}
   affiliate:
     default-fallback-url: ${AFFILIATE_DEFAULT_FALLBACK_URL:https://heygoodly.com}
+  geoip:
+    db-path: ${GEOIP_DB_PATH:deploy/geoip/GeoLite2-Country.mmdb}
 
 logging:
   level:

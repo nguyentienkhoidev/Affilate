@@ -12,6 +12,8 @@ export interface AdminOfferPayload {
   isVerified?: boolean;
   isActive?: boolean;
   sortOrder?: number;
+  hasExpiration?: boolean;
+  startAt?: string | null;
   expireAt?: string | null;
   tags?: string[];
 }
@@ -32,6 +34,8 @@ export interface AdminOfferDetail {
   isVerified: boolean;
   isActive: boolean;
   sortOrder: number;
+  hasExpiration?: boolean;
+  startAt?: string | null;
   expireAt?: string | null;
   usesCount?: number;
   tags?: string[];

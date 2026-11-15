@@ -103,7 +103,8 @@ public class PostMapper implements BaseMapper<PostEntity, PostDetailResponse, Po
                 p.getMetaKeywords(),
                 p.getMetaDescription(),
                 p.getCanonicalUrl(),
-                computeStatus(p)
+                computeStatus(p),
+                NullSafeUtils.safeInt(p.getSortOrder(), AppConstants.DEFAULT_SORT_ORDER)
         );
     }
 
@@ -154,7 +155,8 @@ public class PostMapper implements BaseMapper<PostEntity, PostDetailResponse, Po
                 NullSafeUtils.safeBoolean(p.getIsActive()),
                 p.getPublishedAt(),
                 NullSafeUtils.safeLong(p.getViewCount(), 0L),
-                computeStatus(p)
+                computeStatus(p),
+                NullSafeUtils.safeInt(p.getSortOrder(), AppConstants.DEFAULT_SORT_ORDER)
         );
     }
 

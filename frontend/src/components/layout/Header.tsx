@@ -14,6 +14,8 @@ import {
   Moon,
 } from 'lucide-react';
 import { useSiteSettings } from '@/lib/admin/useSiteSettings';
+import { resolveActiveHolidayTheme } from '@/lib/holidayTheme';
+import { useVisitorCountry } from '@/lib/useVisitorCountry';
 import { useTheme } from '@/context/ThemeContext';
 import { type MenuItem } from '@/app/admin/menus/_lib/data';
 import { menuService, resolveMenuHref } from '@/services/menuService';
@@ -155,11 +157,31 @@ export default function Header() {
   const brandName = settings.siteName || 'HeyGoodly';
   const brandTagline = settings.tagline || '';
   const sponsorDestinationUrl = settings.headerAdsBannerUrl || ROUTES.PUBLIC.STORES;
+  const isHomePage = pathname === ROUTES.PUBLIC.HOME;
+  const visitorCountry = useVisitorCountry();
+  const activeHoliday = settings.loaded
+    ? resolveActiveHolidayTheme(
+        settings.holidayThemeMode,
+        settings.holidayThemeManual,
+        new Date(),
+        visitorCountry,
+        settings.holidayCountryOverrides,
+        settings.holidayCustomRules
+      )
+    : resolveActiveHolidayTheme('off');
 
   return (
     <header className="w-full bg-white border-b border-[#E7E7E5]">
-      {/* 1. TOP UTILITY BAR */}
-      <div className="bg-[#F8F8F6] border-b border-[#E7E7E5] text-[11px] text-[#737373] py-1.5 px-4 sm:px-6">
+      {/* 0. SEASONAL HOLIDAY RIBBON (When Auto or Manual Holiday Theme is active) */}
+      {activeHoliday.id !== 'none' && (
+        <div className={`${activeHoliday.ribbonBgClass} py-1.5 px-4 text-center text-[11px] font-bold tracking-wide flex items-center justify-center gap-2`}>
+          <span>{activeHoliday.brandEmoji}</span>
+          <span className="truncate">{activeHoliday.ribbonText}</span>
+        </div>
+      )}
+
+      {/* 1. TOP UTILITY BAR (Desktop only to keep mobile above-the-fold compact) */}
+      <div className="hidden lg:block bg-[#F8F8F6] border-b border-[#E7E7E5] text-[11px] text-[#737373] py-1.5 px-4 sm:px-6">
         <div className="max-w-[1240px] mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#171717]">
@@ -245,10 +267,10 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 2. BRANDING MASTHEAD */}
-      <div className="bg-white py-4 sm:py-6 px-4 sm:px-6 border-b border-[#E7E7E5]">
-        <div className="max-w-[1240px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6">
-          <Link href={ROUTES.PUBLIC.HOME} className="flex flex-col items-center lg:items-start text-center lg:text-left group shrink-0 max-w-full">
+      {/* 2. BRANDING MASTHEAD (Desktop always; Mobile only shows the Partner Spotlight ad on Homepage when active) */}
+      <div className={`${isHomePage && settings.loaded && settings.headerAdsActive && settings.headerAdsTitle ? 'block' : 'hidden lg:block'} bg-white py-3 sm:py-5 lg:py-6 px-4 sm:px-6 border-b border-[#E7E7E5]`}>
+        <div className="max-w-[1240px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-5 lg:gap-6">
+          <Link href={ROUTES.PUBLIC.HOME} className="hidden lg:flex flex-col items-center lg:items-start text-center lg:text-left group shrink-0 max-w-full">
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3">
               {settings.logoUrl && settings.logoUrl !== '/logo.png' && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -259,6 +281,9 @@ export default function Header() {
                 />
               )}
               <span className="font-editorial text-3xl sm:text-5xl lg:text-[54px] font-bold text-[#171717] tracking-tight leading-none">
+                {activeHoliday.brandEmoji && (
+                  <span className="mr-2 text-2xl sm:text-4xl align-middle">{activeHoliday.brandEmoji}</span>
+                )}
                 {brandName}
                 <span className="text-[#C62828]">.</span>
               </span>
@@ -342,15 +367,25 @@ export default function Header() {
             })}
           </div>
 
-          <div className="lg:hidden py-1.5">
+          <div className="lg:hidden py-1.5 flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="min-h-[40px] px-2 -ml-2 text-[#171717] hover:text-[#C62828] rounded-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+              className="min-h-[38px] px-2 -ml-2 text-[#171717] hover:text-[#C62828] rounded-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer shrink-0"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X size={20} /> : <MenuIcon size={20} />}
-              <span>Menu</span>
+              <span className="hidden xs:inline">Menu</span>
             </button>
+            <Link
+              href={ROUTES.PUBLIC.HOME}
+              className="font-editorial text-xl sm:text-2xl font-bold text-[#171717] tracking-tight leading-none truncate"
+            >
+              {activeHoliday.brandEmoji && (
+                <span className="mr-1.5 text-base sm:text-lg align-middle">{activeHoliday.brandEmoji}</span>
+              )}
+              {brandName}
+              <span className="text-[#C62828]">.</span>
+            </Link>
           </div>
 
           <div className="relative py-1.5 flex items-center gap-2 shrink-0">
@@ -467,9 +502,9 @@ export default function Header() {
         )}
       </nav>
 
-      {/* 4. DEDICATED FLASH NEWS TICKER (Rendered strictly when live database posts exist) */}
+      {/* 4. DEDICATED FLASH NEWS TICKER (Desktop always; Mobile on Homepage only) */}
       {flashNews.length > 0 && (
-        <div className="border-b border-[#E7E7E5] bg-[#F8F8F6] py-2 px-4 sm:px-6 overflow-hidden select-none">
+        <div className={`${isHomePage ? 'block' : 'hidden lg:block'} border-b border-[#E7E7E5] bg-[#F8F8F6] py-2 px-4 sm:px-6 overflow-hidden select-none`}>
           <style
             dangerouslySetInnerHTML={{
               __html: `
