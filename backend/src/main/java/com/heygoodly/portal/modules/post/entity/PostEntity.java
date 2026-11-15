@@ -37,6 +37,12 @@ public class PostEntity extends BaseEntity {
     @Column(name = "author_id")
     private Long authorId;
 
+    @Column(name = "author_name", length = 150)
+    private String authorName;
+
+    @Column(name = "author_role", length = 150)
+    private String authorRole;
+
     @Column(name = "store_id")
     private Long storeId;
 

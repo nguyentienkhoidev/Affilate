@@ -35,6 +35,8 @@ public class PostRequest {
     private Long categoryId;
     private Long storeId;
     private String storeSlug;
+    private String authorName;
+    private String authorRole;
     private String image;
     private String excerpt;
 

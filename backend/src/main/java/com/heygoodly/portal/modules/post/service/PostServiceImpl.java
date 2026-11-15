@@ -469,6 +469,8 @@ public class PostServiceImpl implements PostService {
                 .slug(slug)
                 .categoryId(request.getCategoryId())
                 .authorId(authorId)
+                .authorName(NullSafeUtils.trimToNull(request.getAuthorName()))
+                .authorRole(NullSafeUtils.trimToNull(request.getAuthorRole()))
                 .storeId(resolvedStoreId)
                 .image(NullSafeUtils.trimToNull(request.getImage()))
                 .excerpt(NullSafeUtils.trimToNull(request.getExcerpt()))
@@ -526,6 +528,8 @@ public class PostServiceImpl implements PostService {
             post.setStoreId(resolveStoreId(request.getStoreId(), request.getStoreSlug()));
         }
 
+        post.setAuthorName(NullSafeUtils.trimToNull(request.getAuthorName()));
+        post.setAuthorRole(NullSafeUtils.trimToNull(request.getAuthorRole()));
         post.setImage(NullSafeUtils.trimToNull(request.getImage()));
         post.setExcerpt(NullSafeUtils.trimToNull(request.getExcerpt()));
         post.setContent(request.getContent());
@@ -620,6 +624,8 @@ public class PostServiceImpl implements PostService {
                 .slug(cloneSlug)
                 .categoryId(source.getCategoryId())
                 .authorId(source.getAuthorId())
+                .authorName(source.getAuthorName())
+                .authorRole(source.getAuthorRole())
                 .storeId(source.getStoreId())
                 .image(source.getImage())
                 .excerpt(source.getExcerpt())

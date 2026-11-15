@@ -28,17 +28,20 @@ import {
   ExternalLink,
   X,
   Command,
+  Loader2,
 } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { useAdminI18n } from '@/context/AdminI18nContext';
 import { useTheme } from '@/context/ThemeContext';
+import searchService, { type UniversalSearchResult } from '@/services/searchService';
+import { useOsShortcut } from '@/lib/utils/useOsShortcut';
 
 interface CommandItem {
   id: string;
   title: string;
   subtitle?: string;
   keywords?: string;
-  category: 'Operations' | 'CMS & Channels' | 'Security & Settings' | 'Quick Actions';
+  category: 'Operations' | 'CMS & Channels' | 'Security & Settings' | 'Quick Actions' | 'Live Database';
   icon: React.ElementType;
   iconColor: string;
   badge?: string;
@@ -54,11 +57,15 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
   const router = useRouter();
   const { locale, setLocale, t } = useAdminI18n();
   const { isDark, toggleTheme } = useTheme();
+  const { shortcutBadge } = useOsShortcut();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dbResults, setDbResults] = useState<UniversalSearchResult | null>(null);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const inFlightControllerRef = useRef<AbortController | null>(null);
 
   const navigateTo = (path: string) => {
     onClose();
@@ -319,10 +326,102 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
     ];
   }, [locale, isDark, t, toggleTheme, setLocale]);
 
+  // Live PostgreSQL search across Stores, Offers & Articles when typing >= 2 chars
+  useEffect(() => {
+    const trimmed = query.trim();
+
+    if (inFlightControllerRef.current) {
+      inFlightControllerRef.current.abort();
+      inFlightControllerRef.current = null;
+    }
+
+    if (!isOpen || trimmed.length < 2) {
+      setDbResults(null);
+      setIsSearchingDb(false);
+      return;
+    }
+
+    setIsSearchingDb(true);
+    const controller = new AbortController();
+    inFlightControllerRef.current = controller;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchService.searchAll({
+          q: trimmed,
+          limit: 5,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setDbResults(res);
+          setIsSearchingDb(false);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setDbResults(null);
+          setIsSearchingDb(false);
+        }
+      }
+    }, 220);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [isOpen, query]);
+
+  const liveDbItems: CommandItem[] = useMemo(() => {
+    if (!dbResults || query.trim().length < 2) return [];
+
+    const storeItems: CommandItem[] = dbResults.stores.map((store) => ({
+      id: `db-store-${store.id}`,
+      title: store.name,
+      subtitle: `Store • /store/${store.slug}`,
+      category: 'Live Database',
+      icon: Store,
+      iconColor: 'text-amber-500',
+      badge: `${store.couponsCount ?? 0} offers`,
+      action: () => navigateTo(ROUTES.ADMIN.STORE_EDIT(store.id)),
+    }));
+
+    const offerItems: CommandItem[] = dbResults.coupons.map((offer) => ({
+      id: `db-offer-${offer.id}`,
+      title: offer.title,
+      subtitle: `${offer.storeName || 'Offer'} • ${offer.code || 'DEAL'}`,
+      category: 'Live Database',
+      icon: Tag,
+      iconColor: 'text-emerald-500',
+      badge: offer.discount || undefined,
+      action: () => navigateTo(ROUTES.ADMIN.OFFER_EDIT(offer.id)),
+    }));
+
+    const postItems: CommandItem[] = dbResults.posts.map((post) => ({
+      id: `db-post-${post.id}`,
+      title: post.title,
+      subtitle: `Article • /post/${post.slug}`,
+      category: 'Live Database',
+      icon: FileText,
+      iconColor: 'text-indigo-400',
+      badge: post.category || undefined,
+      action: () => navigateTo(ROUTES.ADMIN.POST_EDIT(post.id)),
+    }));
+
+    return [...storeItems, ...offerItems, ...postItems];
+  }, [dbResults, query]);
+
   // Category filters under the search bar
   const categories = useMemo(() => {
-    return [
-      { id: 'ALL', label: locale === 'vi' ? 'Tất cả' : 'All', count: commandItems.length },
+    const baseCategories = [
+      { id: 'ALL', label: locale === 'vi' ? 'Tất cả' : 'All', count: commandItems.length + liveDbItems.length },
+      ...(query.trim().length >= 2 || liveDbItems.length > 0
+        ? [
+            {
+              id: 'Live Database',
+              label: locale === 'vi' ? 'Dữ liệu DB' : 'Live DB',
+              count: liveDbItems.length,
+            },
+          ]
+        : []),
       {
         id: 'Quick Actions',
         label: locale === 'vi' ? 'Thao tác nhanh' : 'Quick Actions',
@@ -344,13 +443,18 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
         count: commandItems.filter((i) => i.category === 'Security & Settings').length,
       },
     ];
-  }, [commandItems, locale]);
+    return baseCategories;
+  }, [commandItems, liveDbItems.length, locale, query]);
 
   // Filter items based on query and active category
   const filteredItems = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
 
-    return commandItems.filter((item) => {
+    if (activeCategory === 'Live Database') {
+      return liveDbItems;
+    }
+
+    const staticMatches = commandItems.filter((item) => {
       if (activeCategory !== 'ALL' && item.category !== activeCategory) {
         return false;
       }
@@ -362,7 +466,13 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
       const matchCategory = item.category.toLowerCase().includes(trimmed);
       return matchTitle || matchSubtitle || matchKeywords || matchCategory;
     });
-  }, [commandItems, query, activeCategory]);
+
+    if (activeCategory === 'ALL' && liveDbItems.length > 0) {
+      return [...staticMatches, ...liveDbItems];
+    }
+
+    return staticMatches;
+  }, [commandItems, liveDbItems, query, activeCategory]);
 
   // Reset selected index when filtered items change
   useEffect(() => {
@@ -375,6 +485,8 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
       setQuery('');
       setActiveCategory('ALL');
       setSelectedIndex(0);
+      setDbResults(null);
+      setIsSearchingDb(false);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
@@ -447,6 +559,9 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
               }
               className="flex-1 text-[15px] sm:text-[16px] font-normal bg-transparent border-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
             />
+            {isSearchingDb && (
+              <Loader2 size={16} className="animate-spin text-[#C62828] mr-2 shrink-0" />
+            )}
             {query ? (
               <button
                 type="button"
@@ -519,10 +634,12 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
 
               return (
                 <div key={item.id}>
-                  {/* Category Section Header (Chỉ hiện khi ở tab Tất cả và không đang gõ tìm kiếm) */}
-                  {activeCategory === 'ALL' && !query && isFirstOfCategory && (
+                  {/* Category Section Header */}
+                  {activeCategory === 'ALL' && (!query || item.category === 'Live Database') && isFirstOfCategory && (
                     <div className="px-3 pt-3.5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 select-none">
-                      {t(item.category)}
+                      {item.category === 'Live Database'
+                        ? (locale === 'vi' ? 'Kết quả từ Database' : 'Live Database Results')
+                        : t(item.category)}
                     </div>
                   )}
 
@@ -581,7 +698,9 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
                         </div>
                       ) : (
                         <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2 py-0.5 rounded-md bg-zinc-100/70 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-800/50 hidden sm:inline">
-                          {t(item.category)}
+                          {item.category === 'Live Database'
+                            ? (locale === 'vi' ? 'Dữ liệu DB' : 'Live DB')
+                            : t(item.category)}
                         </span>
                       )}
                     </div>
@@ -604,6 +723,10 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
               <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-[10px] font-mono border border-zinc-300/40 dark:border-zinc-700/40">↵</kbd>
               <span>{locale === 'vi' ? 'Mở' : 'Open'}</span>
             </span>
+            <span className="hidden md:flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-[10px] font-mono border border-zinc-300/40 dark:border-zinc-700/40">Tab</kbd>
+              <span>{locale === 'vi' ? 'Chuyển mục' : 'Switch tab'}</span>
+            </span>
             <span className="hidden sm:flex items-center gap-1.5">
               <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-[10px] font-mono border border-zinc-300/40 dark:border-zinc-700/40">esc</kbd>
               <span>{locale === 'vi' ? 'Đóng' : 'Close'}</span>
@@ -613,7 +736,7 @@ export default function AdminCommandPalette({ isOpen, onClose }: AdminCommandPal
           <div className="flex items-center gap-2">
             <span className="text-[10.5px] text-zinc-400 dark:text-zinc-500 font-medium">HeyGoodly ProCMS</span>
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 border border-zinc-300/40 dark:border-zinc-700/40">⌘K</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 border border-zinc-300/40 dark:border-zinc-700/40">{shortcutBadge}</kbd>
           </div>
         </div>
       </div>

@@ -13,14 +13,32 @@ export interface CategoryItem {
   icon: string;
   subtitle: string;
   description: string;
+  descriptionHtml?: string;
   metaTitle?: string;
   metaDescription?: string;
+}
+
+function stripHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function mapBackendCategory(c: Record<string, unknown>, preferStoreCount = false): CategoryItem {
   const postCount = Number(c.postCount ?? c.count ?? 0);
   const storeCount = Number(c.storeCount ?? 0);
   const name = String(c.name || '');
+  const metaTitle = typeof c.metaTitle === 'string' && c.metaTitle.trim() ? c.metaTitle.trim() : undefined;
+  const rawDescription = typeof c.description === 'string' ? c.description.trim() : '';
+  const cleanDescription = stripHtml(rawDescription);
 
   return {
     id: Number(c.id),
@@ -32,9 +50,10 @@ function mapBackendCategory(c: Record<string, unknown>, preferStoreCount = false
     storeCount,
     image: typeof c.image === 'string' && c.image.trim() ? c.image.trim() : undefined,
     icon: String(c.icon || ''),
-    subtitle: String(c.metaTitle || `${name} Editorial`),
-    description: String(c.description || ''),
-    metaTitle: c.metaTitle ? String(c.metaTitle) : undefined,
+    subtitle: metaTitle || '',
+    description: cleanDescription,
+    descriptionHtml: rawDescription || undefined,
+    metaTitle,
     metaDescription: c.metaDescription ? String(c.metaDescription) : undefined,
   };
 }

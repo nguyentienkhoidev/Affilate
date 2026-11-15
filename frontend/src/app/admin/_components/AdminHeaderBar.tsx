@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ShieldCheck, User, Command, ExternalLink, Sun, Moon, Globe } from 'lucide-react';
+import { ShieldCheck, User, Command, ExternalLink, Sun, Moon, Globe, Search } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import type { RoleType } from '@/lib/admin/usePermission';
 import { useTheme } from '@/context/ThemeContext';
 import { useAdminI18n } from '@/context/AdminI18nContext';
+import { useOsShortcut } from '@/lib/utils/useOsShortcut';
 
 interface AdminHeaderBarProps {
   /** Page title derived from the current pathname */
@@ -30,6 +31,7 @@ export default function AdminHeaderBar({
 }: AdminHeaderBarProps) {
   const { isDark, toggleTheme } = useTheme();
   const { locale, setLocale, t } = useAdminI18n();
+  const { isMac, shortcutTitle } = useOsShortcut();
 
   return (
     <header className="h-16 bg-white/95 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-2xs z-20 sticky top-0">
@@ -116,15 +118,25 @@ export default function AdminHeaderBar({
           <span className="hidden sm:inline">{t('2FA & Profile')}</span>
         </Link>
 
-        {/* Cmd+K Quick Search Button */}
+        {/* OS-Aware Quick Search Button (⌘K / Ctrl K) */}
         <button
           type="button"
           onClick={onOpenCommandPalette}
-          className="h-8 hidden md:inline-flex items-center gap-1.5 text-[11px] font-mono bg-zinc-100 hover:bg-zinc-200/90 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80 px-2.5 rounded-xl whitespace-nowrap transition cursor-pointer shadow-2xs group"
-          title={locale === 'vi' ? 'Tìm kiếm nhanh & Điều hướng (⌘K)' : 'Quick Search & Command Palette (⌘K)'}
+          className="h-8 inline-flex items-center gap-1.5 text-[11px] bg-zinc-100 hover:bg-zinc-200/90 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80 px-2.5 rounded-xl whitespace-nowrap transition cursor-pointer shadow-2xs group"
+          title={locale === 'vi' ? `Tìm kiếm nhanh & Điều hướng (${shortcutTitle})` : `Quick Search & Command Palette (${shortcutTitle})`}
+          aria-label={`Quick Search (${shortcutTitle})`}
         >
-          <Command size={11} className="group-hover:text-[#C62828] transition-colors" />
-          <span className="font-bold">K</span>
+          <Search size={13} className="text-zinc-500 group-hover:text-[#C62828] transition-colors shrink-0" />
+          <span className="hidden sm:inline-flex items-center gap-0.5 font-mono">
+            {isMac ? (
+              <>
+                <Command size={11} className="group-hover:text-[#C62828] transition-colors" />
+                <span className="font-bold">K</span>
+              </>
+            ) : (
+              <span className="font-bold tracking-tight">Ctrl K</span>
+            )}
+          </span>
         </button>
 
         {/* Live site */}

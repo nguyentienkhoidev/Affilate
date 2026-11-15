@@ -15,6 +15,7 @@ public record OfferResponse(
         String urlRef,
         String description,
         boolean isVerified,
+        boolean isExclusive,
         boolean isActive,
         int sortOrder,
         boolean hasExpiration,

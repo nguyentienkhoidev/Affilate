@@ -129,8 +129,9 @@ export default function ArticleDetailPage() {
     );
   }
 
+  const sidebarConfig = article.sidebarConfig || {};
   const targetStoreSlug = matchedStore?.slug || article.storeSlug || '';
-  const targetStoreName = matchedStore?.name || article.storeName || '';
+  const targetStoreName = sidebarConfig.storeName?.trim() || matchedStore?.name || article.storeName || '';
   const targetStoreRating =
     typeof matchedStore?.rating === 'number' && matchedStore.rating > 0 ? matchedStore.rating : null;
   const rawMaxDiscount = matchedStore?.maxDiscount || storeCoupons[0]?.discount || null;
@@ -140,7 +141,6 @@ export default function ArticleDetailPage() {
       : `Up to ${rawMaxDiscount}`
     : null;
 
-  const sidebarConfig = article.sidebarConfig || {};
   const showBrandCard = sidebarConfig.showBrandCard !== false && Boolean(targetStoreSlug && targetStoreName);
   const showStoreCoupons = sidebarConfig.showStoreCoupons !== false && Boolean(targetStoreSlug) && storeCoupons.length > 0;
   const showRelatedReviews = sidebarConfig.showRelatedReviews !== false && relatedArticles.length > 0;

@@ -215,6 +215,7 @@ public class OfferServiceImpl implements OfferService {
                 .description(request.getDescription())
                 .image(request.getImage() != null && !request.getImage().isBlank() ? request.getImage().trim() : null)
                 .isVerified(request.getIsVerified() != null ? request.getIsVerified() : false)
+                .isExclusive(request.getIsExclusive() != null ? request.getIsExclusive() : false)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : com.heygoodly.portal.common.constant.AppConstants.DEFAULT_SORT_ORDER)
                 .hasExpiration(hasExpiration)
@@ -253,6 +254,7 @@ public class OfferServiceImpl implements OfferService {
         entity.setDescription(request.getDescription());
         entity.setImage(request.getImage() != null && !request.getImage().isBlank() ? request.getImage().trim() : null);
         if (request.getIsVerified() != null) entity.setIsVerified(request.getIsVerified());
+        if (request.getIsExclusive() != null) entity.setIsExclusive(request.getIsExclusive());
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
         if (request.getSortOrder() != null) entity.setSortOrder(request.getSortOrder());
         boolean hasExpiration = Boolean.TRUE.equals(request.getHasExpiration())
@@ -325,6 +327,7 @@ public class OfferServiceImpl implements OfferService {
                 .description(source.getDescription())
                 .image(source.getImage())
                 .isVerified(source.getIsVerified())
+                .isExclusive(source.getIsExclusive())
                 .isActive(false) // Cloned copy starts inactive
                 .sortOrder(source.getSortOrder())
                 .hasExpiration(Boolean.TRUE.equals(source.getHasExpiration()))

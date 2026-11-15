@@ -51,6 +51,10 @@ public class OfferEntity extends BaseEntity {
     private Boolean isVerified = false;
 
     @Builder.Default
+    @Column(name = "is_exclusive", nullable = false)
+    private Boolean isExclusive = false;
+
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

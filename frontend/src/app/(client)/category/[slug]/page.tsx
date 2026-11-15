@@ -193,30 +193,46 @@ export default function NewsCategoryArchivePage({ params }: PageProps) {
         </nav>
 
         {/* 2. Category Header Banner */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-10 shadow-2xs space-y-4 relative">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {meta?.icon && <span className="text-2xl">{meta.icon}</span>}
-            <span className="bg-[#c62828] text-white font-black text-[11px] uppercase tracking-wider px-3 py-1 rounded-sm shadow-xs">
-              Editorial Desk
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-              {totalArticles} Published Articles
-            </span>
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-10 shadow-2xs relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-4 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {meta?.icon && <span className="text-2xl">{meta.icon}</span>}
+                <span className="bg-[#c62828] text-white font-black text-[11px] uppercase tracking-wider px-3 py-1 rounded-sm shadow-xs">
+                  Editorial Desk
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                  {totalArticles} Published Articles
+                </span>
+              </div>
 
-          <div className="space-y-2 max-w-3xl">
-            <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight font-editorial">
-              {meta?.name || normalizedSlug}
-            </h1>
-            {meta?.subtitle && (
-              <p className="text-xs sm:text-sm font-bold text-[#c62828]">
-                {meta.subtitle}
-              </p>
-            )}
-            {meta?.description && (
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                {meta.description}
-              </p>
+              <div className="space-y-2">
+                <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight font-editorial">
+                  {meta?.name || normalizedSlug}
+                </h1>
+                {meta?.descriptionHtml && /<[a-z][\s\S]*>/i.test(meta.descriptionHtml) ? (
+                  <div
+                    className="text-xs sm:text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: meta.descriptionHtml }}
+                  />
+                ) : meta?.description ? (
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {meta.description}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            {meta?.image && (
+              <div className="w-full md:w-64 h-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={meta.image}
+                  alt={meta.name || normalizedSlug}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             )}
           </div>
 

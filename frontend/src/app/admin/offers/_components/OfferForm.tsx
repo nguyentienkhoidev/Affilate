@@ -27,7 +27,7 @@ interface OfferFormState {
   title: string;
   couponCode: string;
   discountAmount: string;
-  discountUnit: 'percentage' | 'fixed';
+  discountUnit: 'percentage' | 'fixed' | 'free_shipping';
   destinationUrl: string;
   isExclusive: boolean;
   isActive: boolean;
@@ -78,7 +78,7 @@ function OfferFormContent({ id }: { id?: string }) {
             discount: discountStr,
             couponCode: data.code || null,
             offerType: data.code ? 'coupon' : 'deal',
-            isExclusive: false,
+            isExclusive: Boolean(data.isExclusive),
             isActive: data.isActive !== false,
             isVerified: Boolean(data.isVerified),
             usesCount: 0,
@@ -116,8 +116,14 @@ function OfferFormContent({ id }: { id?: string }) {
         offerType: offerData.offerType,
         title: offerData.title,
         couponCode: offerData.couponCode || '',
-        discountAmount: offerData.discount.replace(/[^0-9.]/g, '') || '10',
-        discountUnit: offerData.discount.includes('%') ? 'percentage' : 'fixed',
+        discountAmount: offerData.discount.trim().toLowerCase().includes('free shipping')
+          ? ''
+          : offerData.discount.replace(/[^0-9.]/g, '') || '10',
+        discountUnit: offerData.discount.trim().toLowerCase().includes('free shipping')
+          ? 'free_shipping'
+          : offerData.discount.includes('%')
+            ? 'percentage'
+            : 'fixed',
         destinationUrl: offerData.destinationUrl || `https://${offerData.storeSlug || 'store'}.com/?ref=heygoodly`,
         isExclusive: offerData.isExclusive,
         isActive: offerData.isActive,
@@ -189,9 +195,11 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
   };
 
   const discountFormatted =
-    form.discountUnit === 'percentage'
-      ? `${form.discountAmount}% Off`
-      : `$${form.discountAmount} Off`;
+    form.discountUnit === 'free_shipping'
+      ? 'FREE SHIPPING'
+      : form.discountUnit === 'percentage'
+        ? `${form.discountAmount}% Off`
+        : `$${form.discountAmount} Off`;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,6 +231,7 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
       urlRef: form.destinationUrl.trim() || (selectedStore?.afWebsite || `https://${storeSlug}.com/?ref=heygoodly`),
       description: form.terms.trim() || null,
       isVerified: form.isVerified,
+      isExclusive: form.isExclusive,
       isActive: form.isActive,
       sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 9999,
       image: form.imageUrl?.trim() || null,
@@ -361,16 +370,19 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
             <FormSection title="Discount & Destination URL">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className={labelClass}>Discount Amount *</label>
+                  <label className={labelClass}>
+                    {form.discountUnit === 'free_shipping' ? 'Discount Badge' : 'Discount Amount *'}
+                  </label>
                   <input
                     type="text"
-                    value={form.discountAmount}
+                    disabled={form.discountUnit === 'free_shipping'}
+                    value={form.discountUnit === 'free_shipping' ? 'FREE SHIPPING' : form.discountAmount}
                     onChange={(e) => {
                       setForm({ ...form, discountAmount: e.target.value });
                       if (errors.discountAmount) setErrors((prev) => ({ ...prev, discountAmount: '' }));
                     }}
                     placeholder="e.g. 15 or 50"
-                    className={`${inputClass} ${errors.discountAmount ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
+                    className={`${inputClass} ${form.discountUnit === 'free_shipping' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''} ${errors.discountAmount ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500' : ''}`}
                   />
                   {errors.discountAmount && (
                     <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
@@ -383,11 +395,17 @@ function OfferFormInner({ id, existing, initial }: { id?: string; existing?: Off
                   <label className={labelClass}>Discount Unit</label>
                   <select
                     value={form.discountUnit}
-                    onChange={(e) => setForm({ ...form, discountUnit: e.target.value as 'percentage' | 'fixed' })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        discountUnit: e.target.value as 'percentage' | 'fixed' | 'free_shipping',
+                      })
+                    }
                     className={inputClass}
                   >
                     <option value="percentage">% Percentage Off</option>
                     <option value="fixed">$ Fixed USD Off</option>
+                    <option value="free_shipping">Free Shipping</option>
                   </select>
                 </div>
               </div>

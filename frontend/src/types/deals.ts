@@ -116,6 +116,7 @@ export interface Store {
 }
 
 export interface ArticleSidebarConfig {
+  storeName?: string;
   showBrandCard?: boolean;
   showStoreCoupons?: boolean;
   showRelatedReviews?: boolean;

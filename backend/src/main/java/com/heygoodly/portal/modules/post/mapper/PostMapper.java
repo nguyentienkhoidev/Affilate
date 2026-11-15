@@ -58,13 +58,17 @@ public class PostMapper implements BaseMapper<PostEntity, PostDetailResponse, Po
             return null;
         }
 
-        String authorName = (Objects.nonNull(author) && StringUtils.hasText(author.getFullName()))
-                ? author.getFullName()
-                : PostConstants.DEFAULT_AUTHOR_NAME;
+        String authorName = StringUtils.hasText(p.getAuthorName())
+                ? p.getAuthorName().trim()
+                : ((Objects.nonNull(author) && StringUtils.hasText(author.getFullName()))
+                        ? author.getFullName()
+                        : PostConstants.DEFAULT_AUTHOR_NAME);
         String authorAvatar = Objects.nonNull(author) ? NullSafeUtils.trimToNull(author.getAvatar()) : null;
-        String authorRole = (Objects.nonNull(author) && StringUtils.hasText(author.getDepartment()))
-                ? author.getDepartment()
-                : PostConstants.DEFAULT_AUTHOR_ROLE;
+        String authorRole = StringUtils.hasText(p.getAuthorRole())
+                ? p.getAuthorRole().trim()
+                : ((Objects.nonNull(author) && StringUtils.hasText(author.getDepartment()))
+                        ? author.getDepartment()
+                        : PostConstants.DEFAULT_AUTHOR_ROLE);
         String authorBio = Objects.nonNull(author) ? NullSafeUtils.trimToNull(author.getBio()) : null;
 
         String readTime = StringUtils.hasText(p.getReadTime())
@@ -119,13 +123,17 @@ public class PostMapper implements BaseMapper<PostEntity, PostDetailResponse, Po
             return null;
         }
 
-        String authorName = (Objects.nonNull(author) && StringUtils.hasText(author.getFullName()))
-                ? author.getFullName()
-                : PostConstants.DEFAULT_AUTHOR_NAME;
+        String authorName = StringUtils.hasText(p.getAuthorName())
+                ? p.getAuthorName().trim()
+                : ((Objects.nonNull(author) && StringUtils.hasText(author.getFullName()))
+                        ? author.getFullName()
+                        : PostConstants.DEFAULT_AUTHOR_NAME);
         String authorAvatar = Objects.nonNull(author) ? NullSafeUtils.trimToNull(author.getAvatar()) : null;
-        String authorRole = (Objects.nonNull(author) && StringUtils.hasText(author.getDepartment()))
-                ? author.getDepartment()
-                : PostConstants.DEFAULT_AUTHOR_ROLE;
+        String authorRole = StringUtils.hasText(p.getAuthorRole())
+                ? p.getAuthorRole().trim()
+                : ((Objects.nonNull(author) && StringUtils.hasText(author.getDepartment()))
+                        ? author.getDepartment()
+                        : PostConstants.DEFAULT_AUTHOR_ROLE);
 
         String readTime = StringUtils.hasText(p.getReadTime())
                 ? p.getReadTime().trim()

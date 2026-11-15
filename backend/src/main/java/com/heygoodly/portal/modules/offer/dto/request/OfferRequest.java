@@ -38,6 +38,9 @@ public class OfferRequest {
     private Boolean isVerified = false;
 
     @Builder.Default
+    private Boolean isExclusive = false;
+
+    @Builder.Default
     private Boolean isActive = true;
 
     @Builder.Default

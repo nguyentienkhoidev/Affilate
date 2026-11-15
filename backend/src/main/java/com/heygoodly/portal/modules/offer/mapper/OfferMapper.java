@@ -58,6 +58,7 @@ public class OfferMapper implements BaseMapper<OfferEntity, OfferResponse, Offer
                 o.getUrlRef(),
                 o.getDescription(),
                 Boolean.TRUE.equals(o.getIsVerified()),
+                Boolean.TRUE.equals(o.getIsExclusive()),
                 Boolean.TRUE.equals(o.getIsActive()),
                 Objects.nonNull(o.getSortOrder()) ? o.getSortOrder() : AppConstants.DEFAULT_SORT_ORDER,
                 Boolean.TRUE.equals(o.getHasExpiration()) || Objects.nonNull(o.getStartAt()) || Objects.nonNull(o.getExpireAt()),

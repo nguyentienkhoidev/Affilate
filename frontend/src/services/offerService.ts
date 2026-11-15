@@ -10,6 +10,7 @@ export interface AdminOfferPayload {
   description?: string | null;
   image?: string | null;
   isVerified?: boolean;
+  isExclusive?: boolean;
   isActive?: boolean;
   sortOrder?: number;
   hasExpiration?: boolean;
@@ -32,6 +33,7 @@ export interface AdminOfferDetail {
   urlRef: string;
   description?: string | null;
   isVerified: boolean;
+  isExclusive?: boolean;
   isActive: boolean;
   sortOrder: number;
   hasExpiration?: boolean;

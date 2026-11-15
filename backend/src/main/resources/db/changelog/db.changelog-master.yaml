@@ -59,3 +59,5 @@ databaseChangeLog:
       file: db/changelog/changes/029-seed-holiday-theme-settings.sql
   - include:
       file: db/changelog/changes/030-seed-holiday-geo-settings.sql
+  - include:
+      file: db/changelog/changes/031-sync-offer-exclusive-and-post-author.sql

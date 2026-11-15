@@ -116,9 +116,25 @@ export default function CategoriesDirectoryPage() {
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-4xl p-3 bg-red-50 rounded-2xl border border-red-100">
-                        {cat.icon || '📰'}
-                      </span>
+                      {cat.image ? (
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-red-100 bg-red-50 shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={cat.image}
+                            alt={cat.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : cat.icon ? (
+                        <span className="w-14 h-14 flex items-center justify-center text-3xl bg-red-50 rounded-2xl border border-red-100 shrink-0">
+                          {cat.icon}
+                        </span>
+                      ) : (
+                        <span className="w-14 h-14 flex items-center justify-center bg-red-50 text-[#c62828] rounded-2xl border border-red-100 shrink-0">
+                          <Layers size={26} />
+                        </span>
+                      )}
                       <div className="text-right">
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                           <BookOpen size={12} /> {cat.count} Articles
@@ -132,11 +148,6 @@ export default function CategoriesDirectoryPage() {
                           {cat.name}
                         </Link>
                       </h2>
-                      {cat.subtitle && (
-                        <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                          {cat.subtitle}
-                        </p>
-                      )}
                       {cat.description && (
                         <p className="text-xs text-slate-600 mt-2 leading-relaxed line-clamp-3">
                           {cat.description}

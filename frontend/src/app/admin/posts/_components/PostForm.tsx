@@ -243,7 +243,7 @@ function PostFormContent({ id }: { id?: string }) {
         sortOrder: existing.sortOrder ?? 9999,
         tags: existing.tags.join(', '),
         storeSlug: existing.storeSlug || '',
-        storeName: existing.storeName || '',
+        storeName: existing.sidebarConfig?.storeName || existing.storeName || '',
         showBrandCard: existing.sidebarConfig?.showBrandCard !== false,
         showStoreCoupons: existing.sidebarConfig?.showStoreCoupons !== false,
         showRelatedReviews: existing.sidebarConfig?.showRelatedReviews !== false,
@@ -507,10 +507,18 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
     } else {
       // PUBLISHED
       isActive = true;
-      finalPublishedAt = new Date().toISOString();
+      const trimmedDate = form.publishedAt.trim();
+      const parsedTime =
+        trimmedDate && trimmedDate.toLowerCase() !== 'today'
+          ? Date.parse(trimmedDate)
+          : NaN;
+      finalPublishedAt = !Number.isNaN(parsedTime)
+        ? new Date(parsedTime).toISOString()
+        : new Date().toISOString();
     }
 
     const sidebarConfig = {
+      storeName: form.storeName.trim(),
       showBrandCard: form.showBrandCard,
       showStoreCoupons: form.showStoreCoupons,
       showRelatedReviews: form.showRelatedReviews,
@@ -535,6 +543,8 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
       content: form.content,
       categoryId: form.categoryId,
       storeSlug: form.storeSlug.trim() || null,
+      authorName: form.authorName.trim() || null,
+      authorRole: form.authorRole.trim() || null,
       image: form.imageUrl.trim(),
       readTime: form.readTime.trim() || null,
       rating: numericRating,
@@ -552,7 +562,6 @@ function PostFormInner({ existing, initial }: { existing?: AdminArticle; initial
 
     try {
       if (existing) {
-        await apiClient.put(API_ENDPOINTS.ADMIN.POST_DETAIL(existing.id), payload);
         const res = await apiClient.put(API_ENDPOINTS.ADMIN.POST_DETAIL(existing.id), payload);
         toast.success(res.data?.message || `Saved "${form.title}" successfully!`);
       } else {

@@ -400,6 +400,56 @@ export default function AdminSettingsPage() {
                   />
                 </div>
 
+                {/* Social Channels */}
+                <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                      {t('Social Channels')}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {t('Public social profile URLs linked from the site header and footer.')}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">{t('Facebook URL')}</label>
+                      <Input
+                        value={settings.social_facebook ?? ''}
+                        onChange={(e) => updateField('social_facebook', e.target.value)}
+                        placeholder="https://facebook.com/heygoodly"
+                        className="font-medium"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">{t('Twitter / X URL')}</label>
+                      <Input
+                        value={settings.social_twitter ?? ''}
+                        onChange={(e) => updateField('social_twitter', e.target.value)}
+                        placeholder="https://x.com/heygoodly"
+                        className="font-medium"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">{t('YouTube URL')}</label>
+                      <Input
+                        value={settings.social_youtube ?? ''}
+                        onChange={(e) => updateField('social_youtube', e.target.value)}
+                        placeholder="https://youtube.com/@heygoodly"
+                        className="font-medium"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">{t('TikTok URL')}</label>
+                      <Input
+                        value={settings.social_tiktok ?? ''}
+                        onChange={(e) => updateField('social_tiktok', e.target.value)}
+                        placeholder="https://tiktok.com/@heygoodly"
+                        className="font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Logo & Favicon Upload */}
                 <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-6">
                   <ImageUpload
@@ -807,82 +857,30 @@ export default function AdminSettingsPage() {
                 </div>
               </Card>
 
-              {/* Card 2: Affiliate Operations & Network Parameters */}
+              {/* Card 2: FTC Compliance & Affiliate Disclosure */}
               <Card className="p-6 sm:p-7 space-y-6 rounded-2xl">
                 <div className="border-b border-slate-100 pb-4">
                   <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
                     <Sparkles className="text-amber-500" size={20} />
-                    {t('Affiliate Link Cloaking & Network Settings')}
+                    {t('FTC Affiliate Disclosure')}
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 mt-0.5">
-                    {t('Configure outgoing affiliate link prefixes, partner tags, and FTC compliance disclosures.')}
+                    {t('Configure the public FTC compliance disclosure displayed across reviews, buying guides, and coupon modals.')}
                   </CardDescription>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('Outbound Redirect Prefix')}</label>
-                    <Input
-                      value={settings.affiliate_redirect_prefix ?? '/out/'}
-                      onChange={(e) => updateField('affiliate_redirect_prefix', e.target.value)}
-                      placeholder="/out/"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('Amazon Associate Tag')}</label>
-                    <Input
-                      value={settings.affiliate_amazon_tag ?? ''}
-                      onChange={(e) => updateField('affiliate_amazon_tag', e.target.value)}
-                      placeholder="heygoodly-20"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('Impact Radius Publisher ID')}</label>
-                    <Input
-                      value={settings.affiliate_impact_id ?? ''}
-                      onChange={(e) => updateField('affiliate_impact_id', e.target.value)}
-                      placeholder="HG_IMP_49102"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('CJ Affiliate Publisher ID')}</label>
-                    <Input
-                      value={settings.affiliate_cj_id ?? ''}
-                      onChange={(e) => updateField('affiliate_cj_id', e.target.value)}
-                      placeholder="HG_CJ_881920"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('ShareASale Affiliate ID')}</label>
-                    <Input
-                      value={settings.affiliate_shareasale_id ?? ''}
-                      onChange={(e) => updateField('affiliate_shareasale_id', e.target.value)}
-                      placeholder="HG_SAS_11029"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">{t('FTC Affiliate Disclosure Statement')}</label>
-                    <textarea
-                      rows={2}
-                      value={settings.affiliate_disclosure ?? ''}
-                      onChange={(e) => updateField('affiliate_disclosure', e.target.value)}
-                      placeholder="HeyGoodly is reader-supported. When you buy through links on our site, we may earn an affiliate commission at no extra cost to you."
-                      className="w-full rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] font-medium placeholder:text-zinc-400"
-                    />
-                    <span className="text-[11px] text-slate-500">
-                      {t('Displayed prominently across public reviews, buying guides, and coupon modals.')}
-                    </span>
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">{t('FTC Affiliate Disclosure Statement')}</label>
+                  <textarea
+                    rows={2}
+                    value={settings.affiliate_disclosure ?? ''}
+                    onChange={(e) => updateField('affiliate_disclosure', e.target.value)}
+                    placeholder="HeyGoodly is reader-supported. When you buy through links on our site, we may earn an affiliate commission at no extra cost to you."
+                    className="w-full rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#C62828]/20 focus:border-[#C62828] font-medium placeholder:text-zinc-400"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    {t('Displayed prominently across public reviews, buying guides, and coupon modals.')}
+                  </span>
                 </div>
               </Card>
             </div>
@@ -967,24 +965,13 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">{t('Success Message')}</label>
-                  <Input
-                    value={settings.newsletter_success_message ?? ''}
-                    onChange={(e) => updateField('newsletter_success_message', e.target.value)}
-                    placeholder="Thank you for subscribing! Watch your inbox for the next Dispatch."
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">{t('Subscriber Welcome Email Subject')}</label>
-                  <Input
-                    value={settings.newsletter_welcome_subject ?? ''}
-                    onChange={(e) => updateField('newsletter_welcome_subject', e.target.value)}
-                    placeholder="Welcome to HeyGoodly Dispatch - Your Tech & Deal Briefing"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">{t('Success Message')}</label>
+                <Input
+                  value={settings.newsletter_success_message ?? ''}
+                  onChange={(e) => updateField('newsletter_success_message', e.target.value)}
+                  placeholder="Thank you for subscribing! Watch your inbox for the next Dispatch."
+                />
               </div>
 
               {/* Live Preview */}

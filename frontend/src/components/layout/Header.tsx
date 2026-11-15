@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ROUTES } from '@/constants/routes';
 import { usePathname, useRouter } from 'next/navigation';
@@ -12,6 +12,10 @@ import {
   ArrowRight,
   Sun,
   Moon,
+  Loader2,
+  Store as StoreIcon,
+  Tag,
+  BookOpen,
 } from 'lucide-react';
 import { useSiteSettings } from '@/lib/admin/useSiteSettings';
 import { resolveActiveHolidayTheme } from '@/lib/holidayTheme';
@@ -23,6 +27,8 @@ import { pageService, resolvePublicPageHref, type PublicPageSummary } from '@/se
 import { categoryService, type CategoryItem } from '@/services/categoryService';
 import { postService } from '@/services/postService';
 import { tagService } from '@/services/tagService';
+import searchService, { type UniversalSearchResult } from '@/services/searchService';
+import { useOsShortcut } from '@/lib/utils/useOsShortcut';
 import { type Article } from '@/types/deals';
 
 export default function Header() {
@@ -39,6 +45,10 @@ export default function Header() {
   const [mobileMenuForPath, setMobileMenuForPath] = useState<string | null>(null);
   const [searchOpenForPath, setSearchOpenForPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveResults, setLiveResults] = useState<UniversalSearchResult | null>(null);
+  const [isSearchingLive, setIsSearchingLive] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const { shortcutBadge, shortcutTitle } = useOsShortcut();
 
   useEffect(() => {
     let active = true;
@@ -85,6 +95,76 @@ export default function Header() {
       });
     }
   };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpenForPath((prev) => {
+          const nextOpen = prev !== pathname;
+          if (nextOpen && !hasLoadedTags) {
+            setHasLoadedTags(true);
+            tagService.getTrendingTags().then((tags) => {
+              setTrendingTags(tags);
+            });
+          }
+          return nextOpen ? pathname : null;
+        });
+      } else if (e.key === 'Escape' && searchOpen) {
+        e.preventDefault();
+        setSearchOpenForPath(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [pathname, searchOpen, hasLoadedTags]);
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+      searchAbortRef.current = null;
+    }
+
+    if (!searchOpen || trimmed.length < 2) {
+      setLiveResults(null);
+      setIsSearchingLive(false);
+      return;
+    }
+
+    setIsSearchingLive(true);
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    const timer = setTimeout(async () => {
+      try {
+        const isTag = trimmed.startsWith('#');
+        const cleanTerm = isTag ? trimmed.replace(/^#+/, '') : trimmed;
+        const res = await searchService.searchAll({
+          q: cleanTerm,
+          tag: isTag ? cleanTerm : undefined,
+          limit: 4,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setLiveResults(res);
+          setIsSearchingLive(false);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setLiveResults(null);
+          setIsSearchingLive(false);
+        }
+      }
+    }, 220);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchOpen, searchQuery]);
 
   const currentDate = new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
@@ -399,12 +479,17 @@ export default function Header() {
               {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
             </button>
             <button
+              type="button"
               onClick={() => setSearchOpen(!searchOpen)}
-              className="min-h-[38px] px-2.5 py-1.5 text-[#737373] hover:text-[#171717] transition-colors flex items-center gap-2 text-xs cursor-pointer rounded-lg"
-              aria-label="Search articles"
+              className="min-h-[38px] px-2.5 py-1.5 text-[#737373] hover:text-[#171717] transition-colors flex items-center gap-2 text-xs cursor-pointer rounded-lg border border-transparent hover:border-[#E7E7E5]"
+              aria-label={`Search articles (${shortcutTitle})`}
+              title={`Quick Search (${shortcutTitle})`}
             >
               <Search size={16} />
               <span className="hidden sm:inline font-medium">Search</span>
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[#F8F8F6] border border-[#E7E7E5] rounded text-[#737373]">
+                {shortcutBadge}
+              </kbd>
             </button>
           </div>
         </div>
@@ -412,7 +497,7 @@ export default function Header() {
         {/* Search Dropdown */}
         {searchOpen && (
           <div className="border-t border-[#E7E7E5] p-4 bg-[#F8F8F6] animate-fadeIn">
-            <div className="max-w-xl mx-auto space-y-3">
+            <div className="max-w-2xl mx-auto space-y-3">
               <form noValidate onSubmit={handleSearchSubmit} className="relative flex items-center">
                 <Search size={17} className="absolute left-3.5 text-[#737373] pointer-events-none" />
                 <input
@@ -420,9 +505,12 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles, lab reviews, buying guides, coupons..."
-                  className="w-full pl-10 pr-24 py-2.5 sm:py-2 bg-white border border-[#E7E7E5] rounded-md text-base sm:text-sm text-[#171717] focus:outline-none focus:border-[#171717]"
+                  className="w-full pl-10 pr-28 py-2.5 sm:py-2 bg-white border border-[#E7E7E5] rounded-md text-base sm:text-sm text-[#171717] focus:outline-none focus:border-[#171717]"
                   autoFocus
                 />
+                {isSearchingLive && (
+                  <Loader2 size={15} className="animate-spin text-[#C62828] absolute right-[88px] pointer-events-none" />
+                )}
                 <button
                   type="submit"
                   className="absolute right-1.5 bg-[#171717] hover:bg-[#C62828] text-white text-xs font-medium px-3.5 py-1.5 rounded transition-colors cursor-pointer"
@@ -430,6 +518,128 @@ export default function Header() {
                   Search
                 </button>
               </form>
+
+              {/* Live Instant Results */}
+              {searchQuery.trim().length >= 2 && (liveResults || isSearchingLive) && (
+                <div className="bg-white border border-[#E7E7E5] rounded-lg overflow-hidden shadow-xs divide-y divide-[#E7E7E5]">
+                  {isSearchingLive && !liveResults ? (
+                    <div className="px-4 py-4 text-xs text-[#737373] flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-[#C62828]" />
+                      <span>Searching stores, coupons, and reviews...</span>
+                    </div>
+                  ) : liveResults &&
+                    (liveResults.stores.length > 0 ||
+                      liveResults.coupons.length > 0 ||
+                      liveResults.posts.length > 0) ? (
+                    <div className="max-h-80 overflow-y-auto divide-y divide-[#E7E7E5]">
+                      {liveResults.stores.length > 0 && (
+                        <div className="p-2.5 space-y-1">
+                          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#737373] flex items-center gap-1.5">
+                            <StoreIcon size={12} className="text-[#C62828]" />
+                            <span>Stores ({liveResults.stores.length})</span>
+                          </div>
+                          {liveResults.stores.map((store) => (
+                            <Link
+                              key={`quick-store-${store.id}`}
+                              href={ROUTES.PUBLIC.STORE_DETAIL(store.slug)}
+                              onClick={() => setSearchOpen(false)}
+                              className="flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-[#F8F8F6] transition-colors group"
+                            >
+                              <div className="min-w-0 pr-3">
+                                <p className="text-xs font-bold text-[#171717] group-hover:text-[#C62828] truncate">
+                                  {store.name}
+                                </p>
+                                <p className="text-[11px] text-[#737373] truncate">{store.category}</p>
+                              </div>
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                                {store.couponsCount ?? 0} offers
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {liveResults.coupons.length > 0 && (
+                        <div className="p-2.5 space-y-1">
+                          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#737373] flex items-center gap-1.5">
+                            <Tag size={12} className="text-[#C62828]" />
+                            <span>Coupons &amp; Deals ({liveResults.coupons.length})</span>
+                          </div>
+                          {liveResults.coupons.map((coupon) => (
+                            <Link
+                              key={`quick-coupon-${coupon.id}`}
+                              href={
+                                coupon.storeSlug
+                                  ? ROUTES.PUBLIC.STORE_DETAIL(coupon.storeSlug)
+                                  : `${ROUTES.PUBLIC.SEARCH}?q=${encodeURIComponent(coupon.title)}`
+                              }
+                              onClick={() => setSearchOpen(false)}
+                              className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-md hover:bg-[#F8F8F6] transition-colors group"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[#171717] group-hover:text-[#C62828] truncate">
+                                  {coupon.title}
+                                </p>
+                                <p className="text-[11px] text-[#737373] truncate">
+                                  {coupon.storeName || 'Partner Store'}
+                                  {coupon.code ? ` • Code: ${coupon.code}` : ' • Deal'}
+                                </p>
+                              </div>
+                              {coupon.discount && (
+                                <span className="text-[10px] font-black text-[#C62828] bg-red-50 border border-red-100 px-2 py-0.5 rounded shrink-0">
+                                  {coupon.discount}
+                                </span>
+                              )}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {liveResults.posts.length > 0 && (
+                        <div className="p-2.5 space-y-1">
+                          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#737373] flex items-center gap-1.5">
+                            <BookOpen size={12} className="text-[#C62828]" />
+                            <span>Articles &amp; Reviews ({liveResults.posts.length})</span>
+                          </div>
+                          {liveResults.posts.map((post) => (
+                            <Link
+                              key={`quick-post-${post.id}`}
+                              href={ROUTES.PUBLIC.POST_DETAIL(post.slug)}
+                              onClick={() => setSearchOpen(false)}
+                              className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-md hover:bg-[#F8F8F6] transition-colors group"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[#171717] group-hover:text-[#C62828] truncate">
+                                  {post.title}
+                                </p>
+                                <p className="text-[11px] text-[#737373] truncate">
+                                  {post.category}
+                                  {post.readTime ? ` • ${post.readTime}` : ''}
+                                </p>
+                              </div>
+                              <ArrowRight size={12} className="text-[#737373] group-hover:text-[#C62828] shrink-0" />
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 text-xs text-[#737373]">
+                      No instant matches for &ldquo;{searchQuery.trim()}&rdquo;. Press Enter to view full search results.
+                    </div>
+                  )}
+
+                  <Link
+                    href={`${ROUTES.PUBLIC.SEARCH}?q=${encodeURIComponent(searchQuery.trim())}`}
+                    onClick={() => setSearchOpen(false)}
+                    className="flex items-center justify-between px-4 py-2.5 bg-[#F8F8F6] hover:bg-[#EFEFEA] text-xs font-semibold text-[#C62828] transition-colors"
+                  >
+                    <span>View all results for &ldquo;{searchQuery.trim()}&rdquo;</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              )}
+
               {tags.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                   <span className="font-semibold text-[#737373] mr-1">Popular Topics:</span>
