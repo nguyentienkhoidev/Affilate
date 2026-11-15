@@ -79,10 +79,23 @@ jobs:
   deploy-production:
     name: Deploy to Production VPS via Docker Compose
     needs: build-and-push
-    if: ${{ (github.event_name == 'push' || inputs.deploy_to_vps == true) && secrets.VPS_HOST != '' }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_to_vps == true }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check VPS SSH Configuration
+        id: vps_check
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [ -n "$VPS_HOST" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "VPS_HOST secret is not set; skipping SSH deploy."
+          fi
+
       - name: Deploy Stack over SSH
+        if: steps.vps_check.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.VPS_HOST }}
